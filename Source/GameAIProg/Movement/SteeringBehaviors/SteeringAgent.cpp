@@ -20,7 +20,6 @@ void ASteeringAgent::BeginDestroy()
 {
 	Super::BeginDestroy();
 }
-
 // Called every frame
 void ASteeringAgent::Tick(float DeltaTime)
 {
@@ -28,8 +27,37 @@ void ASteeringAgent::Tick(float DeltaTime)
 
 	if (SteeringBehavior)
 	{
-		SteeringOutput output = SteeringBehavior->CalculateSteering(DeltaTime, *this);
-		AddMovementInput(FVector{output.LinearVelocity, 0.f});
+		const SteeringOutput Output = SteeringBehavior->CalculateSteering(DeltaTime, *this);
+		
+		/* 
+		 * Based on Reynolds Steering Behavior (https://www.red3d.com/cwr/steer/gdc99/), 
+		 * not used due to the non-use of the angularvelocity and the behavior of movementcomponent with missing variables like max_force
+		 */
+		//FVector2D DesiredVelocity = Output.LinearVelocity * GetMaxLinearSpeed();
+		//FVector2D Steering = DesiredVelocity - FVector2D{GetVelocity()};
+		//const float MaxAngle{GetMaxAngularSpeed()};
+		//const float RotationStrength = FMath::Clamp(Output.AngularVelocity, -MaxAngle, MaxAngle) * DeltaTime;
+		//AddMovementInput(FVector{Steering, 0.f}, RotationStrength);
+		
+		AddMovementInput(FVector{Output.LinearVelocity, 0.f});
+		
+		if (std::abs(Output.AngularVelocity) > KINDA_SMALL_NUMBER)
+		{
+			//const float TargetAngle = GetRotation() + Output.AngularVelocity;
+			//float DeltaAngle = GetMaxAngularSpeed() * DeltaTime;
+			const float MaxStep = GetMaxAngularSpeed() * DeltaTime;
+
+			// Clamp step to remaining angular difference
+			const float DeltaAngle = FMath::Clamp(
+				Output.AngularVelocity,
+				-MaxStep,
+				MaxStep
+			);
+			
+			SetActorRotation(FRotator{ 0.f
+				, GetRotation() + DeltaAngle 
+				, 0.f });
+		}
 	}
 }
 
