@@ -41,23 +41,7 @@ void ASteeringAgent::Tick(float DeltaTime)
 		
 		AddMovementInput(FVector{Output.LinearVelocity, 0.f});
 		
-		if (std::abs(Output.AngularVelocity) > KINDA_SMALL_NUMBER)
-		{
-			//const float TargetAngle = GetRotation() + Output.AngularVelocity;
-			//float DeltaAngle = GetMaxAngularSpeed() * DeltaTime;
-			const float MaxStep = GetMaxAngularSpeed() * DeltaTime;
-
-			// Clamp step to remaining angular difference
-			const float DeltaAngle = FMath::Clamp(
-				Output.AngularVelocity,
-				-MaxStep,
-				MaxStep
-			);
-			
-			SetActorRotation(FRotator{ 0.f
-				, GetRotation() + DeltaAngle 
-				, 0.f });
-		}
+		AddActorLocalRotation(FRotator(0.f, Output.AngularVelocity * DeltaTime, 0.f));
 	}
 }
 
