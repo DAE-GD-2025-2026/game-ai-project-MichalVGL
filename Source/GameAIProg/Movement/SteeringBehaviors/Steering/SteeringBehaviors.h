@@ -63,17 +63,6 @@ private:
 	ASteeringAgent* m_pCachedAgent{nullptr};
 };
 
-//class Face : public ISteeringBehavior
-//{
-//public:
-//
-//	virtual ~Face() = default;
-//
-//private:
-//
-//	virtual SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
-//};
-
 class Face : public ISteeringBehavior
 {
 public:
@@ -95,20 +84,21 @@ private:
 class Evade : public ISteeringBehavior
 {
 public:
-	Evade(float CircleOffset = 70.f, float CircleRadius = 50.f)
-		: m_CircleOffset(CircleOffset), m_CircleRadius(CircleRadius)
+	
+	Evade(float EvadeRadius = -1.f)
 	{
-	}
+		SetEvadeRadius(EvadeRadius);
+	};
 
 	virtual ~Evade() override = default;
+	
+	void SetEvadeRadius(float EvadeRadius);
+	float GetEvadeRadius() const;
 
 private:
 	virtual SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
 
-	float m_CircleOffset;
-	float m_CircleRadius;
-
-	float m_CachedAngle{0.f};
+	float m_EvadeRadiusSq{};
 };
 
 class Wander : public Seek

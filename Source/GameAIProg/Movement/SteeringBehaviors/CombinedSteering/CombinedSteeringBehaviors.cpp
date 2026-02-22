@@ -3,6 +3,25 @@
 #include <algorithm>
 #include "../SteeringAgent.h"
 
+// HELPERS
+
+namespace
+{
+	void DrawSteeringDebug(const ASteeringAgent& Agent, const SteeringOutput& Steering, float LineLength = 100.f)
+	{
+		DrawDebugLine(
+			Agent.GetWorld(),
+			FVector(Agent.GetPosition(), 0.f),
+			FVector(Agent.GetPosition(), 0.f) + Agent.GetActorForwardVector() * LineLength,
+			FColor::Purple,
+			false,
+			0.f,
+			0,
+			3.f
+		);
+	}
+}
+
 BlendedSteering::BlendedSteering(const std::vector<WeightedBehavior>& WeightedBehaviors)
 	:WeightedBehaviors(WeightedBehaviors)
 {};
@@ -11,12 +30,21 @@ BlendedSteering::BlendedSteering(const std::vector<WeightedBehavior>& WeightedBe
 //BLENDED STEERING
 SteeringOutput BlendedSteering::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 {
-	SteeringOutput BlendedSteering = {};
-	// TODO: Calculate the weighted average steeringbehavior
+	SteeringOutput Output{};
+	SteeringOutput SingleSteering{};
+	for (WeightedBehavior& Behaviour : WeightedBehaviors)
+	{
+		SingleSteering = Behaviour.pBehavior->CalculateSteering(DeltaT, Agent);
+		
+		SingleSteering.LinearVelocity.Normalize();
+		SingleSteering *= Behaviour.Weight;
+		Output = Output + SingleSteering;
+	}
 	
-	// TODO: Add debug drawing
+	if (Agent.GetDebugRenderingEnabled())
+		DrawSteeringDebug(Agent, Output, 200.f);
 
-	return BlendedSteering;
+	return Output;
 }
 
 float* BlendedSteering::GetWeight(ISteeringBehavior* const SteeringBehavior)

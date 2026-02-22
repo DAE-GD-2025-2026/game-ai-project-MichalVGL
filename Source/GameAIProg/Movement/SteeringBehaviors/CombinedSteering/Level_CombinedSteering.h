@@ -31,6 +31,19 @@ private:
 	//Datamembers
 	bool UseMouseTarget = false;
 	bool CanDebugRender = false;
-
 	
+	//base behaviours
+	std::unique_ptr<Seek> pSeekBehaviour{};
+	std::unique_ptr<Wander> pWanderBehaviour{};
+	std::unique_ptr<Evade> pEvadeBehaviour{};
+
+	//combined behaviors
+	std::unique_ptr<BlendedSteering> pBlendedSteering{};
+	std::unique_ptr<PrioritySteering> pPrioritySteering{};
+	
+	//agents
+	UPROPERTY()
+	ASteeringAgent* DrunkAgent{};
+	UPROPERTY()
+	ASteeringAgent* EvadingAgent{};
 };

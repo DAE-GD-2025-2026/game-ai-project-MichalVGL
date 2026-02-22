@@ -16,9 +16,15 @@ void ALevel_Flocking::BeginPlay()
 {
 	Super::BeginPlay();
 
-	TrimWorld->SetTrimWorldSize(3000.f);
+	TrimWorld->SetTrimWorldSize(1000.f);
 	TrimWorld->bShouldTrimWorld = true;
-
+	
+	pAgentToEvadeBehaviour = std::make_unique<Wander>(200.f, 80.f, 10.f);
+	
+	FActorSpawnParameters SpawnParams{};
+	pAgentToEvade = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass, FVector::Zero(), FRotator::ZeroRotator, SpawnParams);
+	pAgentToEvade->SetSteeringBehavior(pAgentToEvadeBehaviour.get());
+	
 	pFlock = TUniquePtr<Flock>(
 		new Flock(
 			GetWorld(),
