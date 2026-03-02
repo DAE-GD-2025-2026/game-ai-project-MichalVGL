@@ -131,11 +131,8 @@ SteeringOutput Face::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	SteeringOutput Steering{};
 	 
 	FVector2D ToTarget = Target.Position - Agent.GetPosition();
-	ToTarget.Normalize();
-	
 	const float TargetAngle = FMath::RadiansToDegrees(FMath::Atan2(ToTarget.Y, ToTarget.X));
 	const float Angle = FMath::FindDeltaAngleDegrees(Agent.GetRotation(), TargetAngle);
-
 	Steering.AngularVelocity = Angle;
 	
 	if (Agent.GetDebugRenderingEnabled())

@@ -28,10 +28,10 @@ SteeringOutput Separation::CalculateSteering(float deltaT, ASteeringAgent& pAgen
 		{
 			FVector2D ToAgent = pAgent.GetPosition() - Neighbours[i]->GetPosition();
 
-			if (const float Distance = ToAgent.Size()
-				; Distance > 0.f)
+			if (const float DistanceSq = ToAgent.SquaredLength()
+				; DistanceSq > 0.f)
 			{
-				Steering.LinearVelocity += (ToAgent / Distance) * (1.f / Distance);	//todo maybe delete /distance
+				Steering.LinearVelocity += (ToAgent / DistanceSq);
 			}
 		}
 	}

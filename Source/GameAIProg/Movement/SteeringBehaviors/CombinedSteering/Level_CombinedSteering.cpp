@@ -40,6 +40,8 @@ void ALevel_CombinedSteering::BeginPlay()
 	
 	DrunkAgent->SetSteeringBehavior(pBlendedSteering.get());
 	EvadingAgent->SetSteeringBehavior(pPrioritySteering.get());
+	DrunkAgent->SetDebugRenderingEnabled(CanDebugRender);
+	EvadingAgent->SetDebugRenderingEnabled(CanDebugRender);
 }
 
 void ALevel_CombinedSteering::BeginDestroy()
@@ -66,7 +68,7 @@ void ALevel_CombinedSteering::Tick(float DeltaTime)
 		ImGui::Text("CONTROLS");
 		ImGui::Indent();
 		ImGui::Text("LMB: place target");
-		ImGui::Text("RMB: move cam.");
+		ImGui::Text("WASD: move cam.");
 		ImGui::Text("Scrollwheel: zoom cam.");
 		ImGui::Unindent();
 	
@@ -86,18 +88,10 @@ void ALevel_CombinedSteering::Tick(float DeltaTime)
 		ImGui::Spacing();
 		ImGui::Spacing();
 	
-		ImGui::Text("Flocking");
-		ImGui::Spacing();
-		ImGui::Spacing();
-	
 		if (ImGui::Checkbox("Debug Rendering", &CanDebugRender))
 		{
-   // TODO: Handle the debug rendering of your agents here :)
-			if (CanDebugRender)
-			{
-				DrunkAgent->SetDebugRenderingEnabled(CanDebugRender);
-				EvadingAgent->SetDebugRenderingEnabled(CanDebugRender);
-			}
+			DrunkAgent->SetDebugRenderingEnabled(CanDebugRender);
+			EvadingAgent->SetDebugRenderingEnabled(CanDebugRender);
 		}
 		ImGui::Checkbox("Trim World", &TrimWorld->bShouldTrimWorld);
 		if (TrimWorld->bShouldTrimWorld)

@@ -44,6 +44,7 @@ SteeringOutput BlendedSteering::CalculateSteering(float DeltaT, ASteeringAgent& 
 	if (Agent.GetDebugRenderingEnabled())
 		DrawSteeringDebug(Agent, Output, 200.f);
 
+	Output.LinearVelocity.Normalize();
 	return Output;
 }
 
