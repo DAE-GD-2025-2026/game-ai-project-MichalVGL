@@ -55,7 +55,7 @@ SteeringOutput Flee::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 
 // ARRIVE
 
-Arrive::Arrive(const float TargetRad, const float SlowRad)
+Arrive::Arrive(float TargetRad, float SlowRad)
 	: m_TargetRadiusSq(TargetRad* TargetRad),
 	m_SlowRadiusSq(SlowRad* SlowRad)
 {
@@ -65,6 +65,16 @@ Arrive::~Arrive()
 {
 	if (m_pCachedAgent != nullptr)
 		m_pCachedAgent->SetMaxLinearSpeed(m_CachedMaxSpeed);
+}
+
+void Arrive::SetTargetRad(float Rad)
+{
+	m_TargetRadiusSq = Rad * Rad;
+}
+
+void Arrive::SetSlowRad(float SlowRad)
+{
+	m_SlowRadiusSq = SlowRad * SlowRad;
 }
 
 SteeringOutput Arrive::CalculateSteering(float DeltaT, ASteeringAgent& Agent)

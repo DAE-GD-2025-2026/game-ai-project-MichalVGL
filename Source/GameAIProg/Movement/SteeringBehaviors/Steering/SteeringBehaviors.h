@@ -50,8 +50,11 @@ private:
 class Arrive : public ISteeringBehavior
 {
 public:
-	Arrive(float TargetRad, float SlowRad);
+	Arrive(float TargetRad = 10.f, float SlowRad = 20.f);
 	virtual ~Arrive() override;
+	
+	void SetTargetRad(float Rad);
+	void SetSlowRad(float SlowRad);
 
 private:
 	virtual SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
