@@ -1,3 +1,14 @@
 # Game AI Project
 
-Feel free to edit the readme to your liking
+A project made following the course Game AI Programming (Algorithms 2).
+
+## Current implementation
+
+- Base steeringbehaviours
+- Combined steeringbehaviours
+- Flock
+- Flock Partitioning
+
+## To be implemented
+
+- Graph theory
