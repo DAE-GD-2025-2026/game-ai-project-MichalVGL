@@ -3,7 +3,7 @@
 
 // HELPERS
 
-namespace
+namespace SHelper
 {
 	void DrawSteeringDebug(const ASteeringAgent& Agent, const SteeringOutput& Steering, float LineLength = 100.f)
 	{
@@ -31,7 +31,7 @@ SteeringOutput Seek::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	
 	if (Agent.GetDebugRenderingEnabled())
 	{
-		DrawSteeringDebug(Agent, Steering);
+		SHelper::DrawSteeringDebug(Agent, Steering);
 	}
 
 	return Steering;
@@ -47,7 +47,7 @@ SteeringOutput Flee::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 
 	if (Agent.GetDebugRenderingEnabled())
 	{
-		DrawSteeringDebug(Agent, Steering);
+		SHelper::DrawSteeringDebug(Agent, Steering);
 	}
 
 	return Steering;
@@ -77,6 +77,12 @@ void Arrive::SetSlowRad(float SlowRad)
 	m_SlowRadiusSq = SlowRad * SlowRad;
 }
 
+void Arrive::ResetSpeed()
+{
+	if (m_pCachedAgent != nullptr)
+		m_pCachedAgent->SetMaxLinearSpeed(m_CachedMaxSpeed);
+}
+
 SteeringOutput Arrive::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 {
 	if (m_pCachedAgent != &Agent)
@@ -98,7 +104,7 @@ SteeringOutput Arrive::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 
 	if (Agent.GetDebugRenderingEnabled())
 	{
-		DrawSteeringDebug(Agent, Steering, 100.f * SlowPercent);
+		SHelper::DrawSteeringDebug(Agent, Steering, 100.f * SlowPercent);
 
 		DrawDebugCircle(
 			Agent.GetWorld(),
@@ -147,7 +153,7 @@ SteeringOutput Face::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	
 	if (Agent.GetDebugRenderingEnabled())
 	{
-		DrawSteeringDebug(Agent, Steering);
+		SHelper::DrawSteeringDebug(Agent, Steering);
 	}
 	
 	return Steering;
@@ -166,7 +172,7 @@ SteeringOutput Pursuit::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 
 	if (Agent.GetDebugRenderingEnabled())
 	{
-		DrawSteeringDebug(Agent, Steering);
+		SHelper::DrawSteeringDebug(Agent, Steering);
 		
 		DrawDebugCircle(
 			Agent.GetWorld(),
@@ -251,7 +257,7 @@ SteeringOutput Evade::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 
 	if (Agent.GetDebugRenderingEnabled())
 	{
-		DrawSteeringDebug(Agent, Steering);
+		SHelper::DrawSteeringDebug(Agent, Steering);
 		
 		DrawDebugCircle(
 			Agent.GetWorld(),
@@ -309,7 +315,7 @@ SteeringOutput Wander::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	
 	if (Agent.GetDebugRenderingEnabled())
 	{
-		DrawSteeringDebug(Agent, Steering);
+		SHelper::DrawSteeringDebug(Agent, Steering);
 		DrawDebugCircle(
 			Agent.GetWorld(),
 			FVector(Target.Position, 0.f),

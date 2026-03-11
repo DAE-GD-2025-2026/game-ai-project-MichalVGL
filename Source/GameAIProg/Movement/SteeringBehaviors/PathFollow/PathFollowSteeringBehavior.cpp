@@ -61,5 +61,6 @@ void PathFollow::GotoNextPathPoint()
 		//Move to the next node
 		pSeek->SetTarget(PathTarget);
 		pCurrentSteering = pSeek;
+		pArrive->ResetSpeed();	//if arrived earlier, it will have set the speed to 0
 	}
 }

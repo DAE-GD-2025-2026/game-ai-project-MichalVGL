@@ -67,7 +67,7 @@ namespace GameAI
         std::vector<std::unique_ptr<Node>> const& GetNodes() const;
         std::vector<std::unique_ptr<Node>>& GetNodes();
 
-        std::vector<Node const *>  GetActiveNodes() const;
+        std::vector<Node const *> GetActiveNodes() const;
         std::vector<Node*> GetActiveNodes();
         int GetNodeCount() const;
 

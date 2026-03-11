@@ -55,6 +55,8 @@ public:
 	
 	void SetTargetRad(float Rad);
 	void SetSlowRad(float SlowRad);
+	
+	void ResetSpeed();
 
 private:
 	virtual SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;

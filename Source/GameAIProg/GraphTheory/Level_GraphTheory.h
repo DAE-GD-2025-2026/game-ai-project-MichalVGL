@@ -43,5 +43,8 @@ private:
 	UPROPERTY()
 	UGraphEditorComponent* PlayerGraphEditor{}; // ref
 	
+	int CachedNodesSize;
+	int CachedConnectionsSize;
+	
 	void UpdateAgentPath( std::vector<GameAI::Node*> const & Trail);
 };

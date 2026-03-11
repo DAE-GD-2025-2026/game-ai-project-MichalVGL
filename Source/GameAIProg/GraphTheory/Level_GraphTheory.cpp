@@ -41,7 +41,12 @@ void ALevel_GraphTheory::BeginPlay()
 		Player->SetCameraProjection(ECameraProjectionMode::Orthographic);
 	}
 	
-	// TODO Make the graph and a couple connected nodes here...
+	Renderer = GraphRenderer(GetWorld());
+	
+	//GraphNodeFactory<Node> nodeFactory{};
+	//int id0 = Graph.AddNode(nodeFactory.CreateNode({0.f, 100.f}));
+	//int id1 = Graph.AddNode(nodeFactory.CreateNode({200.f, 100.f}));
+	//Graph.AddConnection(0, 1);
 	
 	// Spawn the Agent
 	Agent = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass, 
@@ -99,17 +104,33 @@ void ALevel_GraphTheory::Tick(float DeltaTime)
 	
 	Renderer.RenderGraph(Graph);
 	
-	// TODO Check if the graph has updated
-	// TODO if so, run the EulerianPath algorithm
-	// TODO if a path is found, have the agent follow it
+	if (Graph.GetNodeCount() != CachedNodesSize
+		|| Graph.GetConnections().size() != CachedConnectionsSize)
+	{
+		EulerianPath eulerianPath{&Graph};
+		
+		Eulerianity eulerianity{eulerianPath.IsEulerian()};
+		UpdateAgentPath(eulerianPath.FindPath(eulerianity));
+		
+		CachedNodesSize = Graph.GetNodeCount();
+		CachedConnectionsSize = Graph.GetConnections().size();
+	}
 }
 
 void ALevel_GraphTheory::UpdateAgentPath(std::vector<Node*> const& Trail)
 {
+	UE_LOG(LogTemp, Warning, TEXT("Trail size: %d"), Trail.size());
+	for (int i = 0; i < Trail.size(); i++)
+		UE_LOG(LogTemp, Warning, TEXT("Trail[%d] = ID: %d"), i, Trail[i]->GetId());
+
 	std::vector<FVector2D> path{};
 	
-	// TODO convert Node vector to positions vector
-
+	path.reserve(Trail.size());
+	std::ranges::transform(Trail, std::back_inserter(path), [](const Node* pNode) -> FVector2D
+	{
+		return pNode->GetPosition();
+	});
+	
 	PathFollow.SetPath(path);
 	if (path.size() > 0)
 	{
