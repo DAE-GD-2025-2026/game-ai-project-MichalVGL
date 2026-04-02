@@ -104,7 +104,6 @@ std::optional<FVector> ALevel_Base::GetMouseWorldPos() const
 	FVector MouseWorldDirection{};
 	PlayerController->DeprojectMousePositionToWorld(MouseWorldPos, MouseWorldDirection);
 	
-	// TODO FIXME move to level and just provide a set latest mousepos func?
 	float MaxTraceDistance{20000.0f};
 
 	if (FHitResult HitResult{}; 

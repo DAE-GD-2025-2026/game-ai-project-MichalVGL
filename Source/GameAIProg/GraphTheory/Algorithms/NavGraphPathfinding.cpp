@@ -9,9 +9,8 @@
 using namespace GameAI;
 
 std::vector<FVector2D> NavMeshPathfinding::FindPath(const FVector2D& startPos, const FVector2D& endPos,
-	NavGraph* const pNavGraph, std::vector<FVector2D>& debugNodePositions, std::vector<NavLine>& debugPortals) 
+	NavGraph* const pNavGraph, std::vector<FVector2D>& debugNodePositions, std::vector<NavLine>& debugPortals, HeuristicFunctions::Heuristic heuristic) 
 {
-	//todo, complete findpath
 	//Create the path to return
 	std::vector<FVector2D> finalPath{};
 	
@@ -20,20 +19,29 @@ std::vector<FVector2D> NavMeshPathfinding::FindPath(const FVector2D& startPos, c
 		UE_LOG(LogTemp, Error, TEXT("pNavGraph contains an invalid NavPolygon"));
 		return finalPath;
 	}
-	
 
 	//Get the start and endTriangle
 	const auto* startTriangle = pNavGraph->GetNavPolygon()->GetTriangleAtPosition(startPos, true);
 	const auto* endTriangle = pNavGraph->GetNavPolygon()->GetTriangleAtPosition(endPos, true);
 	
-	// Cache the edges before modifying the graph
-	auto startEdges = startTriangle->GetEdges();
-	auto endEdges = endTriangle->GetEdges();
-	
 	if (startTriangle == nullptr 
 		|| endTriangle == nullptr 
-		|| startTriangle == endTriangle) return finalPath;
-
+		) return finalPath;
+	
+	if (startTriangle == endTriangle)	//in the same triangle, no use of A* pathfinding
+	{
+		finalPath.push_back(startPos);
+		finalPath.push_back(endPos);
+		
+		debugNodePositions = finalPath;
+		debugPortals = std::vector<NavLine>();
+		return finalPath;
+	}
+	
+	// Cache the edges before modifying the graph
+	const auto startEdges = startTriangle->GetEdges();
+	const auto endEdges = endTriangle->GetEdges();
+	
 	//We have valid start/end triangles and they are not the same
 	//=> Start looking for a path
 	//Copy the graph
@@ -41,8 +49,8 @@ std::vector<FVector2D> NavMeshPathfinding::FindPath(const FVector2D& startPos, c
 	
 	//Create Extra node for the Start Node (Agent's position
 	//Create extra node for the endNode
-	int startNodeId = graphCopy.AddNode(std::make_unique<Node>(startPos));
-	int endNodeId = graphCopy.AddNode(std::make_unique<Node>(endPos));
+	const int startNodeId = graphCopy.AddNode(std::make_unique<Node>(startPos));
+	const int endNodeId = graphCopy.AddNode(std::make_unique<Node>(endPos));
 	
 	//add debug node positions
 	debugNodePositions.push_back(graphCopy.GetNode(startNodeId)->GetPosition());
@@ -76,21 +84,14 @@ std::vector<FVector2D> NavMeshPathfinding::FindPath(const FVector2D& startPos, c
 	}
 
 	//Run A star on new graph
-	//todo make heuristic function a imgui setting
-	AStar pathfinder{&graphCopy, HeuristicFunctions::Manhattan};
+	AStar pathfinder{&graphCopy, heuristic};
 
 	std::vector<Node*> nodePath = pathfinder.FindPath(graphCopy.GetNode(startNodeId).get(), graphCopy.GetNode(endNodeId).get());
-	//Debug Visualisation
-	
-	//todo, make the extra and remove the temp finalpath creation from nodes
-	std::ranges::transform(nodePath, std::back_inserter(finalPath), [](const Node* pNode) -> FVector2D
-	{
-		return pNode->GetPosition();
-	});
 
 	// Extra: Run optimiser on new graph (First check if everything works without SSFA!)
-	// debugPortals = SSFA::FindPortals(nodes, *pNavGraph->GetNavPolygon());
-	// finalPath = SSFA::OptimizePortals(debugPortals, *pNavGraph->GetNavPolygon());
+	debugPortals = SSFA::FindPortals(nodePath, *pNavGraph->GetNavPolygon());
+	finalPath = SSFA::OptimizePortals(debugPortals, *pNavGraph->GetNavPolygon());
+	debugNodePositions = finalPath;
 	
 	return finalPath;
 }
@@ -100,5 +101,5 @@ std::vector<FVector2D> NavMeshPathfinding::FindPath(const FVector2D& startPos, c
 	std::vector<FVector2D> debugNodePositions{};
 	std::vector<NavLine> debugPortals{};
 
-	return FindPath(startPos, endPos, pNavGraph, debugNodePositions, debugPortals);
+	return FindPath(startPos, endPos, pNavGraph, debugNodePositions, debugPortals, HeuristicFunctions::Manhattan);
 }

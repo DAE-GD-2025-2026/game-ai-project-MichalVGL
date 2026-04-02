@@ -119,10 +119,6 @@ void ALevel_GraphTheory::Tick(float DeltaTime)
 
 void ALevel_GraphTheory::UpdateAgentPath(std::vector<Node*> const& Trail)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Trail size: %d"), Trail.size());
-	for (int i = 0; i < Trail.size(); i++)
-		UE_LOG(LogTemp, Warning, TEXT("Trail[%d] = ID: %d"), i, Trail[i]->GetId());
-
 	std::vector<FVector2D> path{};
 	
 	path.reserve(Trail.size());

@@ -21,25 +21,26 @@ ALevel_PathfindingAStar::ALevel_PathfindingAStar()
 void ALevel_PathfindingAStar::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	// Disable trimworld
 	TrimWorld->bShouldTrimWorld = false;
-	
+
 	// Make the view orthogonal for less perspective issues
-	if (PlayerController = Cast<APlayerController>(GetWorld()->GetFirstLocalPlayerFromController()->PlayerController); PlayerController)
+	if (PlayerController = Cast<APlayerController>(GetWorld()->GetFirstLocalPlayerFromController()->PlayerController);
+		PlayerController)
 	{
 		if (AGameAISpectator* Player = Cast<AGameAISpectator>(PlayerController->GetPawnOrSpectator()); Player)
 		{
 			Player->SetCameraProjection(ECameraProjectionMode::Orthographic);
 		}
 	}
-	
+
 	// Spawn the Agent
-	Agent = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass, 
-	FVector{0,0,90}, FRotator::ZeroRotator);
+	Agent = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass,
+	                                               FVector{0, 0, 90}, FRotator::ZeroRotator);
 	Agent->SetDebugRenderingEnabled(false);
 	Agent->SetSteeringBehavior(&PathFollow);
-	
+
 	// Create graph & renderer
 	Renderer = new GraphRenderer{GetWorld()};
 	GraphRenderOptions RenderOptions{};
@@ -48,18 +49,19 @@ void ALevel_PathfindingAStar::BeginPlay()
 	RenderOptions.bDrawNodeIds = false;
 	RenderOptions.bDrawNodes = false;
 	Renderer->SetRenderOptions(RenderOptions);
-	
+
 	NodeFactory = new TerrainNodeFactory{};
-	TerrainGraph = new TerrainGridGraph{NodeFactory, 10, 10, 200.0f, 1.0f, 
-		FVector2D{-1000.0f, -1000.0f}, false};
-	//TerrainGraph->SetConnectionCostsToDistances();
+	TerrainGraph = new TerrainGridGraph{
+		NodeFactory, 10, 10, 200.0f, 1.0f,
+		FVector2D{-1000.0f, -1000.0f}, false
+	};
 	CalculatePath();
 }
 
 void ALevel_PathfindingAStar::BeginDestroy()
 {
 	Super::BeginDestroy();
-	
+
 	delete Renderer;
 	delete TerrainGraph;
 	delete NodeFactory;
@@ -68,33 +70,98 @@ void ALevel_PathfindingAStar::BeginDestroy()
 void ALevel_PathfindingAStar::BindLevelInputActions()
 {
 	Super::BindLevelInputActions();
-	
+
 	// Path
-	PlayerEnhancedInputComponent->BindAction(SetStartNodeAction, ETriggerEvent::Triggered, this, 
-		&ALevel_PathfindingAStar::SetStartNodeId);
-	PlayerEnhancedInputComponent->BindAction(SetEndNodeAction, ETriggerEvent::Triggered, this, 
-		&ALevel_PathfindingAStar::SetEndNodeId);
-	
+	PlayerEnhancedInputComponent->BindAction(SetStartNodeAction, ETriggerEvent::Triggered, this,
+	                                         &ALevel_PathfindingAStar::SetStartNodeId);
+	PlayerEnhancedInputComponent->BindAction(SetEndNodeAction, ETriggerEvent::Triggered, this,
+	                                         &ALevel_PathfindingAStar::SetEndNodeId);
+
 	// Terrain
-	PlayerEnhancedInputComponent->BindAction(SetNodeTerrainClearAction, ETriggerEvent::Triggered, this, 
-		&ALevel_PathfindingAStar::SetNodeTerrain, TerrainNode::Type::Clear);
-	PlayerEnhancedInputComponent->BindAction(SetNodeTerrainMudAction, ETriggerEvent::Triggered, this, 
-		&ALevel_PathfindingAStar::SetNodeTerrain, TerrainNode::Type::Mud);
-	PlayerEnhancedInputComponent->BindAction(SetNodeTerrainWaterAction, ETriggerEvent::Triggered, this, 
-		&ALevel_PathfindingAStar::SetNodeTerrain, TerrainNode::Type::Water);
+	PlayerEnhancedInputComponent->BindAction(SetNodeTerrainClearAction, ETriggerEvent::Triggered, this,
+	                                         &ALevel_PathfindingAStar::SetNodeTerrain, TerrainNode::Type::Clear);
+	PlayerEnhancedInputComponent->BindAction(SetNodeTerrainMudAction, ETriggerEvent::Triggered, this,
+	                                         &ALevel_PathfindingAStar::SetNodeTerrain, TerrainNode::Type::Mud);
+	PlayerEnhancedInputComponent->BindAction(SetNodeTerrainWaterAction, ETriggerEvent::Triggered, this,
+	                                         &ALevel_PathfindingAStar::SetNodeTerrain, TerrainNode::Type::Water);
 }
 
 // Called every frame
 void ALevel_PathfindingAStar::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	UpdateImGui();
-	
+
 	Renderer->RenderGraph(*TerrainGraph);
-	TerrainGraph->DebugDrawCells(GetWorld());
+	if (bDrawGrid)
+		TerrainGraph->DebugDrawCells(GetWorld());
+
 	TerrainGraph->DrawTerrain(GetWorld());
-	// TODO implement conditional debug draws
+
+	FlushDebugStrings(GetWorld());
+
+	if (bDrawConnections)
+	{
+		auto& connections = TerrainGraph->GetConnections();
+
+		std::ranges::for_each(connections, [&](auto& connection)
+		{
+			const FVector2d pos1 = TerrainGraph->GetNodePosition(connection->GetFromId());
+			const FVector2d pos2 = TerrainGraph->GetNodePosition(connection->GetToId());
+
+			DrawDebugLine(
+				GetWorld(),
+				FVector{pos1, 0.0f},
+				FVector{pos2, 0.0f},
+				FColor::Green, false, -1, 1, 5.0f);
+		});
+	}
+
+	if (bDrawConnectionsCosts)
+	{
+		auto& connections = TerrainGraph->GetConnections();
+
+		std::ranges::for_each(connections, [&](auto& connection)
+		{
+			int const index = std::ranges::distance(connections.data(), &connection);
+
+			if (index % 4 != 0)
+			//only draw 1 out of 4 connections (to draw all 100 cells due to the 100 strings limit from UE)
+			{
+				return;
+			}
+
+			const FVector2d pos1 = TerrainGraph->GetNodePosition(connection->GetFromId());
+			const FVector2d pos2 = TerrainGraph->GetNodePosition(connection->GetToId());
+			const FVector2d avgPos = (pos2 + pos1) / 2.f;
+
+			const int cost = connection->GetWeight();
+
+			DrawDebugString(
+				GetWorld(),
+				FVector{avgPos, 0.0f},
+				FString::FromInt(cost),
+				nullptr, FColor::White, -1.0f, false, 1.0f);
+		});
+	}
+
+	if (bDrawNodeNumbers)
+	{
+		auto& nodes = TerrainGraph->GetNodes();
+
+		std::ranges::for_each(nodes, [&](auto& node)
+		{
+			const int id = node->GetId();
+			const FVector2d pos = TerrainGraph->GetNodePosition(id);
+
+			DrawDebugString(
+				GetWorld(),
+				FVector{pos, 0.0f},
+				FString::FromInt(id),
+				nullptr, FColor::Yellow, -1.0f, false, 1.0f);
+		});
+	}
 }
 
 void ALevel_PathfindingAStar::CalculatePath()
@@ -122,7 +189,7 @@ void ALevel_PathfindingAStar::CalculatePath()
 		// std::cout << "No valid start and end node..." << std::endl;
 		FoundPath.clear();
 	}
-	
+
 	// Update the highlighted nodes in the renderer
 	std::vector<std::pair<int, FColor>> PathToHighlight{};
 	PathToHighlight.push_back({PathStartNodeId, FColor::Green});
@@ -155,13 +222,14 @@ void ALevel_PathfindingAStar::UpdateAgentPath(std::vector<Node*> const& Path)
 
 void ALevel_PathfindingAStar::UpdateImGui()
 {
-	#pragma region UI
+#pragma region UI
 	//UI
 	{
 		//Setup
 		ImGui::SetNextWindowPos(WindowPos);
 		ImGui::SetNextWindowSize(WindowSize);
-		ImGui::Begin("Gameplay Programming", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+		ImGui::Begin("Gameplay Programming", nullptr,
+		             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
 		//Elements
 		ImGui::Text("CONTROLS");
@@ -173,7 +241,11 @@ void ALevel_PathfindingAStar::UpdateImGui()
 		ImGui::Text("3: Set terrain to Water");
 		ImGui::Unindent();
 
-		/*Spacing*/ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
+		/*Spacing*/
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+		ImGui::Spacing();
 
 		ImGui::Text("STATS");
 		ImGui::Indent();
@@ -181,16 +253,19 @@ void ALevel_PathfindingAStar::UpdateImGui()
 		ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
 		ImGui::Unindent();
 
-		/*Spacing*/ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
+		/*Spacing*/
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+		ImGui::Spacing();
 
 		ImGui::Text("A* Pathfinding");
 		ImGui::Spacing();
-		
-		// TODO conditional debug draws
-		// ImGui::Checkbox("Grid", &bDrawGrid);
-		// ImGui::Checkbox("NodeNumbers", &bDrawNodeNumbers);
-		// ImGui::Checkbox("Connections", &bDrawConnections);
-		// ImGui::Checkbox("Connections Costs", &bDrawConnectionsCosts);
+
+		ImGui::Checkbox("Grid", &bDrawGrid);
+		ImGui::Checkbox("NodeNumbers", &bDrawNodeNumbers);
+		ImGui::Checkbox("Connections", &bDrawConnections);
+		ImGui::Checkbox("Connections Costs", &bDrawConnectionsCosts);
 		if (ImGui::Combo("", &SelectedHeuristic, "Manhattan\0Euclidean\0SqEuclidean\0Octile\0Chebyshev", 4))
 		{
 			switch (SelectedHeuristic)
@@ -246,6 +321,3 @@ void ALevel_PathfindingAStar::SetNodeTerrain(TerrainNode::Type TerrainType)
 	TerrainGraph->PaintNodeAtPosition(FVector2D{LatestMouseWorldPos}, TerrainType);
 	CalculatePath(); // since connections may change
 }
-
-
-

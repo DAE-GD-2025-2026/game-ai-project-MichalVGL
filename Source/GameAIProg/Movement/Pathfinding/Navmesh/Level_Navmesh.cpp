@@ -4,6 +4,7 @@
 #include "Level_Navmesh.h"
 
 #include "NavigationSystem.h"
+#include "StaticMeshAttributes.h"
 #include "AI/NavigationSystemBase.h"
 #include "GraphTheory/Algorithms/AStar.h"
 #include "GraphTheory/Algorithms/NavGraphPathfinding.h"
@@ -15,9 +16,9 @@
 FORCEINLINE FVector RecastToUnreal(const double* RecastVertex)
 {
 	return FVector(
-		static_cast<float>(-RecastVertex[0]),   // X → -X
-		static_cast<float>(-RecastVertex[2]),  // Z → -Y (handedness flip)
-		static_cast<float>(RecastVertex[1])    // Y → Z
+		static_cast<float>(-RecastVertex[0]), // X → -X
+		static_cast<float>(-RecastVertex[2]), // Z → -Y (handedness flip)
+		static_cast<float>(RecastVertex[1]) // Y → Z
 	);
 }
 
@@ -33,31 +34,31 @@ void ALevel_Navmesh::BeginPlay()
 {
 	Super::BeginPlay();
 	TrimWorld->bShouldTrimWorld = false;
-	
+
 	if (AGameAISpectator* Player = Cast<AGameAISpectator>(PlayerController->GetPawnOrSpectator()); Player)
 	{
 		Player->SetCameraProjection(ECameraProjectionMode::Orthographic);
 	}
-	
+
 	// Spawn the Agent
-	Agent = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass, 
-	FVector{2100.0,2100.0,90}, FRotator::ZeroRotator);
+	Agent = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass,
+	                                               FVector{2100.0, 2100.0, 90}, FRotator::ZeroRotator);
 	Agent->SetDebugRenderingEnabled(false);
 	Agent->SetSteeringBehavior(&PathFollow);
-	
+
 	auto NavPoly{std::make_unique<TriPolygon>()};
-	for (TArray<FVector> const & Tri : ExtractNavMeshTris())
+	for (TArray<FVector> const& Tri : ExtractNavMeshTris())
 	{
 		NavPoly->AddTriangle(Tri);
 	}
-	
+
 	NavigationGraph = std::make_unique<GameAI::NavGraph>(std::move(NavPoly));
 	Renderer = std::make_unique<GameAI::GraphRenderer>(GetWorld());
 	Renderer->SetRenderOptions(GameAI::GraphRenderOptions{
-		true, 
-		false, 
-		false, 
-		true, 
+		true,
+		false,
+		false,
+		true,
 		false
 	});
 }
@@ -66,52 +67,69 @@ void ALevel_Navmesh::BeginPlay()
 void ALevel_Navmesh::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	if (bDrawNavPoly)
 	{
 		NavigationGraph->GetNavPolygon()->DrawDebug(GetWorld(), FColor::Yellow);
 	}
-	
+
 	if (bDrawNavPolyVertices)
 	{
 		for (const FVector& Vertex : NavigationGraph->GetNavPolygon()->GetVertices())
 		{
-			DrawDebugPoint(GetWorld(), Vertex, 10.0f, FColor::Cyan);
+			//DrawDebugPoint(GetWorld(), Vertex, 100.0f, FColor::Cyan, false, -1, 0);
+			DrawDebugSphere(GetWorld(), Vertex, 15.0f, 6, FColor::Cyan, false, -1, 0, 2.0f);
 		}
 	}
-	
+
 	if (bDrawNavGraph)
 	{
 		Renderer->RenderGraph(*NavigationGraph.get());
 	}
-	
+
 	if (bDrawPath)
 	{
 		for (int PathIdx = 1; PathIdx < DebugDrawPath.size(); ++PathIdx)
 		{
 			DrawDebugLine(
-				GetWorld(), 
-				FVector{DebugDrawPath[PathIdx - 1], 5.0f}, 
-				FVector{DebugDrawPath[PathIdx], 5.0f}, 
+				GetWorld(),
+				FVector{DebugDrawPath[PathIdx - 1], 5.0f},
+				FVector{DebugDrawPath[PathIdx], 5.0f},
 				FColor::Magenta, false, -1, 1, 10);
 		}
 	}
 	
-	// Todo: Draw the portals travelled through with SSFA
-	// if (bDrawPortals)
-	// {
-	// 	
-	// }
-	
+	if (bDrawPortals)
+	{
+		for (int portalIdx{0}; portalIdx < DebugDrawPortals.size(); ++portalIdx)
+		{
+			DrawDebugLine(
+				GetWorld(),
+				FVector{DebugDrawPortals[portalIdx].P1, 5.0f},
+				FVector{DebugDrawPortals[portalIdx].P2, 5.0f},
+				FColor::Blue, false, -1, 1, 10);
+
+			//draw the right point (P1)
+			DrawDebugSphere(
+				GetWorld(),
+				FVector{DebugDrawPortals[portalIdx].P1, 0.f},
+				20.f,
+				6,
+				FColor::Purple
+				, false, -1, 2, 4.f
+			);
+		}
+	}
+
 	UpdateImGui();
 }
 
 void ALevel_Navmesh::BindLevelInputActions()
 {
 	Super::BindLevelInputActions();
-	
-	PlayerEnhancedInputComponent->BindAction(SetTargetAction, ETriggerEvent::Triggered, 
-		this, &ALevel_Navmesh::SetTarget);
+
+	PlayerEnhancedInputComponent->BindAction(SetTargetAction, ETriggerEvent::Triggered,
+	                                         this, &ALevel_Navmesh::SetTarget);
 }
 
 void ALevel_Navmesh::UpdateImGui()
@@ -122,7 +140,8 @@ void ALevel_Navmesh::UpdateImGui()
 		//Setup
 		ImGui::SetNextWindowPos(WindowPos);
 		ImGui::SetNextWindowSize(WindowSize);
-		ImGui::Begin("Gameplay Programming", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+		ImGui::Begin("Gameplay Programming", nullptr,
+		             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
 		//Elements
 		ImGui::Text("CONTROLS");
@@ -130,7 +149,11 @@ void ALevel_Navmesh::UpdateImGui()
 		ImGui::Text("LMB: Set Target");
 		ImGui::Unindent();
 
-		/*Spacing*/ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
+		/*Spacing*/
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+		ImGui::Spacing();
 
 		ImGui::Text("STATS");
 		ImGui::Indent();
@@ -138,17 +161,48 @@ void ALevel_Navmesh::UpdateImGui()
 		ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
 		ImGui::Unindent();
 
-		/*Spacing*/ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
+		/*Spacing*/
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+		ImGui::Spacing();
 
 		ImGui::Text("Navmesh Pathfinding");
 		ImGui::Spacing();
-		
+
 		ImGui::Checkbox("NavPolyVertices", &bDrawNavPolyVertices);
 		ImGui::Checkbox("NavPoly", &bDrawNavPoly);
 		ImGui::Checkbox("NavGraph", &bDrawNavGraph);
 		ImGui::Checkbox("Path", &bDrawPath);
 		ImGui::Checkbox("Portals", &bDrawPortals);
+		ImGui::Spacing();
 		
+		ImGui::Text("Navmesh Pathfinding");
+		ImGui::Spacing();
+		
+		if (ImGui::Combo("", &SelectedHeuristic, "Manhattan\0Euclidean\0SqEuclidean\0Octile\0Chebyshev", 4))
+		{
+			switch (SelectedHeuristic)
+			{
+			case 0:
+				Heuristic = GameAI::HeuristicFunctions::Manhattan;
+				break;
+			case 1:
+				Heuristic = GameAI::HeuristicFunctions::Euclidean;
+				break;
+			case 2:
+				Heuristic = GameAI::HeuristicFunctions::SqEuclidean;
+				break;
+			case 3:
+				Heuristic = GameAI::HeuristicFunctions::Octile;
+				break;
+			default:
+			case 4:
+				Heuristic = GameAI::HeuristicFunctions::Chebyshev;
+				break;
+			}
+		}
+
 		//End
 		ImGui::End();
 	}
@@ -158,22 +212,23 @@ void ALevel_Navmesh::UpdateImGui()
 TArray<TArray<FVector>> ALevel_Navmesh::ExtractNavMeshTris() const
 {
 	TArray<TArray<FVector>> Polys{};
-	
-	ANavigationData* NavData = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld())->GetDefaultNavDataInstance();
-	if (dtNavMesh const * NavMesh = Cast<ARecastNavMesh>(NavData)->GetRecastMesh())
+
+	ANavigationData* NavData = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld())->
+		GetDefaultNavDataInstance();
+	if (dtNavMesh const* NavMesh = Cast<ARecastNavMesh>(NavData)->GetRecastMesh())
 	{
 		// Loop over all MeshTiles
 		for (int TileIdx{0}; TileIdx < NavMesh->getMaxTiles(); ++TileIdx)
 		{
 			// check if tile is valid
-			dtMeshTile const * Tile{NavMesh->getTile(TileIdx)};
+			dtMeshTile const* Tile{NavMesh->getTile(TileIdx)};
 			if (!Tile || !Tile->header || !Tile->polys) continue;
-			
+
 			for (int i = 0; i < Tile->header->detailMeshCount; ++i)
 			{
 				const dtPolyDetail* DetailMesh = &Tile->detailMeshes[i];
-				const dtPoly* Poly = &Tile->polys[i];  // Corresponding base polygon
-				
+				const dtPoly* Poly = &Tile->polys[i]; // Corresponding base polygon
+
 				for (int triIdx = 0; triIdx < DetailMesh->triCount; ++triIdx)
 				{
 					// Each detail triangle is stored as 4 bytes:
@@ -208,18 +263,19 @@ TArray<TArray<FVector>> ALevel_Navmesh::ExtractNavMeshTris() const
 			}
 		}
 	}
-	
+
 	return Polys;
 }
 
 void ALevel_Navmesh::SetTarget()
 {
 	GameAI::NavMeshPathfinding Pathfinder{};
-	std::vector<FVector2D> Path =  Pathfinder.FindPath(Agent->GetPosition(), 
-	FVector2D{LatestMouseWorldPos}, NavigationGraph.get());
+	std::vector<FVector2D> Path = Pathfinder.FindPath(Agent->GetPosition(),
+	                                                  FVector2D{LatestMouseWorldPos}, NavigationGraph.get(),
+	                                                  DebugDrawPath, DebugDrawPortals, Heuristic);
 
-	DebugDrawPath = Path;
-	
+	//DebugDrawPath = Path;
+
 	PathFollow.SetPath(Path);
 	if (Path.size() > 0)
 	{

@@ -18,16 +18,16 @@ class GAMEAIPROG_API ALevel_PathfindingAStar : public ALevel_Base
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PathfindingLevel|Input")
 	UInputAction* SetStartNodeAction{};
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PathfindingLevel|Input")
 	UInputAction* SetEndNodeAction{};
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PathfindingLevel|Input")
 	UInputAction* SetNodeTerrainClearAction{};
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PathfindingLevel|Input")
 	UInputAction* SetNodeTerrainMudAction{};
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PathfindingLevel|Input")
 	UInputAction* SetNodeTerrainWaterAction{};
 
@@ -36,34 +36,40 @@ public:
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	
+
 	virtual void BeginDestroy() override;
-	
+
 	virtual void BindLevelInputActions() override;
 
 private:
 	UPROPERTY()
 	ASteeringAgent* Agent{nullptr}; // ref
 	PathFollow PathFollow{};
-	
+
 	GameAI::TerrainGridGraph* TerrainGraph{nullptr};
 	GameAI::GraphRenderer* Renderer{nullptr};
 	GameAI::TerrainNodeFactory* NodeFactory{nullptr};
-	
+
 	int PathStartNodeId{44};
 	int PathEndNodeId{88};
 	int SelectedHeuristic = 4;
 	GameAI::HeuristicFunctions::Heuristic HeuristicFunction = GameAI::HeuristicFunctions::Chebyshev;
 	std::vector<GameAI::Node*> FoundPath{};
 
+	bool bDrawGrid{true};
+	bool bDrawNodeNumbers{false};
+	bool bDrawConnections{false};
+	bool bDrawConnectionsCosts{false};
+
 	void CalculatePath();
-	void UpdateAgentPath(std::vector<GameAI::Node*> const & Path);
-	
+	void UpdateAgentPath(std::vector<GameAI::Node*> const& Path);
+
 	void UpdateImGui();
-	
+
 	// Input functions
 	void SetStartNodeId();
 	void SetEndNodeId();

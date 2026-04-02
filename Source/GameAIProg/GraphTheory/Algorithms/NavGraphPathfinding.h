@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include <vector>
 
+#include "Heuristics.h"
+
 namespace GameAI
 {
 	class NavGraph;
@@ -14,7 +16,7 @@ namespace GameAI
 	{
 	public:
 		static std::vector<FVector2D> FindPath(const FVector2D& startPos, const FVector2D& endPos, NavGraph* const pNavGraph,
-			std::vector<FVector2D>& debugNodePositions, std::vector<NavLine>& debugPortals);
+			std::vector<FVector2D>& debugNodePositions, std::vector<NavLine>& debugPortals, HeuristicFunctions::Heuristic heuristic);
 		static std::vector<FVector2D> FindPath(const FVector2D& startPos, const FVector2D& endPos, NavGraph* const pNavGraph);
 	};
 }
