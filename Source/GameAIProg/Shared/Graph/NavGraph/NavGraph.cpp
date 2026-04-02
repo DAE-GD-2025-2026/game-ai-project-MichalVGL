@@ -51,20 +51,7 @@ int GameAI::NavGraph::GetNodeIdFromEdgeIndex(int EdgeIdx) const
 
 void GameAI::NavGraph::CreateNavigationGraph()
 {
-	UE_LOG(LogTemp, Log, TEXT("Edges: %d Triangles: %d"), (int)pNavPoly->GetEdges().size(),
-	       (int)pNavPoly->GetTriangles().size());
 	//1. Go over all the edges of the navigation mesh and create nodes
-	// Create node here
-	//1st version
-	//std::ranges::for_each(pNavPoly->GetEdges(), [&](const TriPolygon::Edge& edge)
-	//{
-	//	const FVector center = (edge.GetP1(*pNavPoly) + edge.GetP2(*pNavPoly)) / 2.f;
-	//	auto edgeIndex = pNavPoly->FindEdgeIndex(edge);
-	//	if (edgeIndex.has_value())
-	//		AddNode(std::make_unique<NavGraphNode>(FVector2d(center), edgeIndex.value()));
-	//});
-
-	//2nd version
 	{
 		using EdgeId = int;
 		using EdgeCount = int;

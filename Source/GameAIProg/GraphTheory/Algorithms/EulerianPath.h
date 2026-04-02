@@ -99,8 +99,6 @@ namespace GameAI
 		do
 		{
 			auto connections = graphCopy.FindConnectionsFrom(currentNodeId);
-			UE_LOG(LogTemp, Warning, TEXT("Processing node %d, connections: %d, stack size: %d"),
-			       currentNodeId, connections.size(), nodeStack.size());
 			if (connections.size() != 0)
 			{
 				nodeStack.push(currentNodeId);
@@ -109,7 +107,6 @@ namespace GameAI
 			}
 			else
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Adding node %d to path"), currentNodeId);
 				Path.emplace_back(m_pGraph->GetNode(currentNodeId).get());
 				if (!nodeStack.empty())
 				{

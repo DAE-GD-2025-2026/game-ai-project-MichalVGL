@@ -71,11 +71,6 @@ std::vector<Node*> AStar::FindPath(Node* const pStartNode, Node* const pGoalNode
 
 				while (currentNodeRecord.pConnection != nullptr)
 				{
-					UE_LOG(LogTemp, Warning,
-							   TEXT(
-								"	returnrecord Cost: {%d} Estemated: {%d}"
-							   ), (int)currentNodeRecord.costSoFar, (int)currentNodeRecord.estimatedTotalCost);
-					
 					path.emplace_back(currentNodeRecord.pNode);
 					
 					auto nodeRecordIt = std::ranges::find_if(closedList, [&](const NodeRecord& record) -> bool
@@ -98,11 +93,6 @@ std::vector<Node*> AStar::FindPath(Node* const pStartNode, Node* const pGoalNode
 				path.emplace_back(currentNodeRecord.pNode); //add the first node
 
 				std::ranges::reverse(path);
-				UE_LOG(LogTemp, Warning,
-							   TEXT(
-								   "Path Found! Path size: {%d} ClosedListSize: {%d}"
-							   ), (int)path.size(), (int)closedList.size());
-				
 				return path;
 			}
 
@@ -136,9 +126,5 @@ float AStar::GetHeuristicCost(Node* const pStartNode, Node* const pEndNode) cons
 {
 	FVector2D toDestination = pGraph->GetNode(pEndNode->GetId())->GetPosition() - pGraph->GetNode(pStartNode->GetId())->
 		GetPosition();
-	UE_LOG(LogTemp, Warning,
-				   TEXT(
-					   "startNodeId: {%d} ToDest: X {%d}, Y {%d}"
-				   ), (int)pStartNode->GetId() , (int)toDestination.X, (int)toDestination.Y);
 	return HeuristicFunction(abs(toDestination.X), abs(toDestination.Y));
 }
