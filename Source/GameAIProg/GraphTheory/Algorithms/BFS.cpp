@@ -13,7 +13,7 @@ BFS::BFS(Graph* const pGraph)
 {
 }
 
-std::vector<Node*> BFS::FindPath(Node* const pStartNode, Node* const pDestinationNode) const
+std::vector<Node*> BFS::FindPath(Node* const pStartNode, Node* const pDestinationNode, bool useFallback) const
 {
 	std::vector<Node*> path;
 	
@@ -49,6 +49,36 @@ std::vector<Node*> BFS::FindPath(Node* const pStartNode, Node* const pDestinatio
 				parentMap[neighbourID] = pNode;
 				queue.push(pNeighbour);
 			}
+		}
+	}
+	
+	if (path.empty() && useFallback) //no path found
+	{
+		//find closest reachable node to destination
+		Node* pClosest = nullptr;
+		float closestDistSq = FLT_MAX;
+
+		for (const auto& id : parentMap | std::views::keys)
+		{
+			Node* pNode = pGraph->GetNode(id).get();
+			float dist = FVector2D::DistSquared(pNode->GetPosition(), pDestinationNode->GetPosition());
+			if (dist < closestDistSq)
+			{
+				closestDistSq = dist;
+				pClosest = pNode;
+			}
+		}
+
+		//reconstruct using the closest node
+		if (pClosest && pClosest != pStartNode)
+		{
+			Node* current = pClosest;
+			while (current != nullptr)
+			{
+				path.push_back(current);
+				current = parentMap[current->GetId()];
+			}
+			std::ranges::reverse(path);
 		}
 	}
 	

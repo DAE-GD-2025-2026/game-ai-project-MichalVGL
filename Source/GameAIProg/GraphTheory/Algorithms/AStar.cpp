@@ -8,7 +8,7 @@ AStar::AStar(Graph* const pGraph, HeuristicFunctions::Heuristic hFunction)
 {
 }
 
-std::vector<Node*> AStar::FindPath(Node* const pStartNode, Node* const pGoalNode)
+std::vector<Node*> AStar::FindPath(Node* const pStartNode, Node* const pGoalNode, bool useFallback)
 {
 	std::vector<Node*> path{};
 	std::vector<NodeRecord> openList;
@@ -49,8 +49,8 @@ std::vector<Node*> AStar::FindPath(Node* const pStartNode, Node* const pGoalNode
 			
 			if (pListedRecord)//if it leads to a node already in any list, check if the path is cheaper and update
 			{
-				float costToNewNode = currentNodeRecord.costSoFar + pConnection->GetWeight();
-				float newEstimatedTotal = costToNewNode + GetHeuristicCost(pListedRecord->pNode, pGoalNode);
+				const float costToNewNode = currentNodeRecord.costSoFar + pConnection->GetWeight();
+				const float newEstimatedTotal = costToNewNode + GetHeuristicCost(pListedRecord->pNode, pGoalNode);
 				
 				if (pListedRecord->estimatedTotalCost > newEstimatedTotal)
 				{
@@ -73,20 +73,16 @@ std::vector<Node*> AStar::FindPath(Node* const pStartNode, Node* const pGoalNode
 				{
 					path.emplace_back(currentNodeRecord.pNode);
 					
-					auto nodeRecordIt = std::ranges::find_if(closedList, [&](const NodeRecord& record) -> bool
-					{
-						return record.pNode == pGraph->GetNode(currentNodeRecord.pConnection->GetFromId()).get();
-					});
-					if (nodeRecordIt != closedList.end())
-					{
-						currentNodeRecord = *nodeRecordIt;
-					}
+					NodeRecord* pRecord = listContainsNodeFunc(closedList, currentNodeRecord.pConnection->GetFromId());
+					
+					if (pRecord)
+						currentNodeRecord = *pRecord;
 					else
 					{
 						UE_LOG(LogTemp, Warning,
-						       TEXT(
-							       "AStar::FindPath created and invalid find iterator. The closedlist behaviour is faulty."
-						       ));
+							   TEXT(
+								   "AStar::FindPath created and invalid find iterator. The closedlist behaviour is faulty."
+							   ));
 					}
 				}
 				
@@ -117,6 +113,37 @@ std::vector<Node*> AStar::FindPath(Node* const pStartNode, Node* const pGoalNode
 			       ));
 		}
 		closedList.push_back(currentNodeRecord);
+	}
+	
+	if (path.empty() && useFallback) //no path found
+	{
+		//find closest reachable node to goal
+		NodeRecord* pClosestRecord = nullptr;
+		float closestDistSq = FLT_MAX;
+
+		for (auto& record : closedList)
+		{
+			float dist = FVector2D::DistSquared(record.pNode->GetPosition(), pGoalNode->GetPosition());
+			if (dist < closestDistSq)
+			{
+				closestDistSq = dist;
+				pClosestRecord = &record;
+			}
+		}
+
+		//reconstruct path to closest node
+		if (pClosestRecord && pClosestRecord->pNode != pStartNode)
+		{
+			NodeRecord* current = pClosestRecord;
+			while (current->pConnection != nullptr)
+			{
+				path.emplace_back(current->pNode);
+				current = listContainsNodeFunc(closedList, current->pConnection->GetFromId());
+			}
+			
+			path.emplace_back(current->pNode); // add start node
+			std::ranges::reverse(path); 
+		}
 	}
 
 	return path;

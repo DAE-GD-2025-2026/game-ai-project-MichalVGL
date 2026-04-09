@@ -178,7 +178,7 @@ void ALevel_PathfindingAStar::CalculatePath()
 		TerrainNode* const startNode = TerrainGraph->GetNodeAs<TerrainNode>(PathStartNodeId);
 		TerrainNode* const endNode = TerrainGraph->GetNodeAs<TerrainNode>(PathEndNodeId);
 
-		FoundPath = pathfinder.FindPath(startNode, endNode);
+		FoundPath = pathfinder.FindPath(startNode, endNode, true);
 		// std::cout << "New path calculated using " << typeid(pathfinder).name() << std::endl;
 		UE_LOG(LogTemp, Log, TEXT("New path calculated using %hs"), typeid(pathfinder).name());
 		UpdateAgentPath(FoundPath);

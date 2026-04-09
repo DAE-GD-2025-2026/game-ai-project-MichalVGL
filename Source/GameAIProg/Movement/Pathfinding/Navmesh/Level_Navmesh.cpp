@@ -274,8 +274,6 @@ void ALevel_Navmesh::SetTarget()
 	                                                  FVector2D{LatestMouseWorldPos}, NavigationGraph.get(),
 	                                                  DebugDrawPath, DebugDrawPortals, Heuristic);
 
-	//DebugDrawPath = Path;
-
 	PathFollow.SetPath(Path);
 	if (Path.size() > 0)
 	{
