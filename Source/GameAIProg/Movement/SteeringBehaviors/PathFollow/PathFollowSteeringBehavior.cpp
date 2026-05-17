@@ -16,8 +16,8 @@ PathFollow::~PathFollow()
 
 void PathFollow::SetPath(std::vector<FVector2D>& path)
 {
-	pathVec = path;  
-	
+	pathVec = path;
+
 	currentPathIndex = -1;
 	GotoNextPathPoint();
 }
@@ -28,7 +28,7 @@ SteeringOutput PathFollow::CalculateSteering(float DeltaTime, ASteeringAgent& Ag
 	{
 		float agentRadius = Agent.GetCapsuleRadius();
 		FVector2D ToPathPoint{pathVec[currentPathIndex] - Agent.GetPosition()};
-		
+
 		if (ToPathPoint.SizeSquared() < agentRadius * agentRadius)
 		{
 			//Reached point of the path
@@ -48,10 +48,9 @@ void PathFollow::GotoNextPathPoint()
 	++currentPathIndex;
 	if (currentPathIndex >= static_cast<int>(pathVec.size())) return;
 	
-	if (currentPathIndex == pathVec.size() -1)
+	if (currentPathIndex == pathVec.size() - 1) //We have reached the last node
 	{
 		FTargetData PathTarget{pathVec[currentPathIndex]};
-		//We have reached the last node
 		pArrive->SetTarget(PathTarget);
 		pCurrentSteering = pArrive;
 	}
@@ -61,6 +60,6 @@ void PathFollow::GotoNextPathPoint()
 		//Move to the next node
 		pSeek->SetTarget(PathTarget);
 		pCurrentSteering = pSeek;
-		pArrive->ResetSpeed();	//if arrived earlier, it will have set the speed to 0
+		pArrive->ResetSpeed(); //if arrived earlier, it will have set the speed to 0
 	}
 }

@@ -4,40 +4,9 @@
 #include <stdexcept>
 #include <format>
 
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Binding/States/WidgetStateRegistration.h"
 #include "Chaos/ClusterUnionManager.h"
-
-// ==========================================================
-// STATE Builder
-// ==========================================================
-
-GameAI::FSM::StateBuilder::StateBuilder(const std::string& stateName)
-{
-	BuildingState = std::make_unique<State>(stateName);
-}
-
-GameAI::FSM::StateBuilder& GameAI::FSM::StateBuilder::SetOnEnter(std::function<void(State* previousState)>&& func)
-{
-	BuildingState->OnEnter = std::move(func);
-	return *this;
-}
-
-GameAI::FSM::StateBuilder& GameAI::FSM::StateBuilder::SetOnExit(std::function<void(State* previousState)>&& func)
-{
-	BuildingState->OnExit = std::move(func);
-	return *this;
-}
-
-GameAI::FSM::StateBuilder& GameAI::FSM::StateBuilder::SetUpdate(std::function<bool()>&& func)
-{
-	BuildingState->Update = std::move(func);
-	return *this;
-}
-
-std::unique_ptr<GameAI::FSM::State>&& GameAI::FSM::StateBuilder::GetState()
-{
-	return std::move(BuildingState);
-}
 
 // ==========================================================
 // STATE
@@ -80,13 +49,14 @@ GameAI::FSM::State* const GameAI::FSM::Transition::GetFromState() const
 }
 
 // ==========================================================
-// TRANSITION
+// FSM
 // ==========================================================
 
-GameAI::FSM::FSM::FSM(std::unique_ptr<GameAI::FSM::State>&& startState)
+GameAI::FSM::FSM::FSM(std::unique_ptr<GameAI::FSM::State>&& startState, UBlackboardComponent* blackboard)
 {
+	auto* rawState = startState.get();
 	AddState(std::move(startState));
-	SwitchToState(startState.get());
+	SwitchToState(rawState, blackboard);
 }
 
 void GameAI::FSM::FSM::AddState(std::unique_ptr<GameAI::FSM::State>&& newState)
@@ -96,11 +66,12 @@ void GameAI::FSM::FSM::AddState(std::unique_ptr<GameAI::FSM::State>&& newState)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Tried to add a nullptr state to the FSM"));
 		throw std::invalid_argument("Tried to add a nullptr transition to the FSM");
-	} else if (HasState(newState->GetName()))
+	}
+	else if (HasState(newState->GetName()))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Transition already exists"));
 	}
-	
+
 	States.emplace_back(std::move(newState));
 }
 
@@ -111,12 +82,12 @@ void GameAI::FSM::FSM::AddTransition(std::unique_ptr<Transition>&& transition)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Tried to add a nullptr transition to the FSM"));
 		throw std::invalid_argument("Tried to add a nullptr transition to the FSM");
-	} 
+	}
 	else if (transition->GetFromState() == nullptr || transition->GetToState() == nullptr)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Tried to add a transition containing a nullptr state to the FSM"));
 		throw std::invalid_argument("Tried to add a nullptr transition to the FSM");
-	} 
+	}
 	else if (HasTransition(transition->GetFromState(), transition->GetToState()))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Transition already exists"));
@@ -127,31 +98,40 @@ void GameAI::FSM::FSM::AddTransition(std::unique_ptr<Transition>&& transition)
 		UE_LOG(LogTemp, Warning, TEXT("Tried adding transition that contains an unknows state, add the state first!!"));
 		return;
 	}
-	
+
 	Transitions.emplace_back(std::move(transition));
 }
 
-void GameAI::FSM::FSM::Update()
+void GameAI::FSM::FSM::Update(UBlackboardComponent* blackboard, float deltaTime)
 {
+	if (blackboard == nullptr)
+	{
+		UE_LOG(LogTemp, Error,
+		       TEXT("Blackboard component is nullptr, controller given to FSM::Update does not have a blackboard"));
+		return;
+	}
+
 	//update state
-	pCurrentState->Update();
-	
+	pCurrentState->Update(blackboard, deltaTime);
+
 	//check transitions
 	auto validTransition = std::ranges::find_if(CurrentTransitions, [this](auto& transition)
 	{
 		return transition->Evaluate() == true;
 	});
-	
+
 	if (validTransition != CurrentTransitions.end())
 	{
-		SwitchToState((*validTransition)->GetToState());
+		SwitchToState((*validTransition)->GetToState(), blackboard);
 	}
 }
 
 bool GameAI::FSM::FSM::HasState(const std::string& name) const
 {
-	return std::ranges::any_of(States, [&name](const auto& state) 
-		{ return state->GetName() == name; });
+	return std::ranges::any_of(States, [&name](const auto& state)
+	{
+		return state->GetName() == name;
+	});
 }
 
 bool GameAI::FSM::FSM::HasState(const State* const state) const
@@ -163,8 +143,8 @@ bool GameAI::FSM::FSM::HasTransition(const std::string& fromName, const std::str
 {
 	return std::ranges::any_of(Transitions, [&fromName, &toName](const auto& transition)
 	{
-		return transition->GetFromState()->GetName() == fromName 
-		&& transition->GetToState()->GetName() == toName;
+		return transition->GetFromState()->GetName() == fromName
+			&& transition->GetToState()->GetName() == toName;
 	});
 }
 
@@ -173,20 +153,24 @@ bool GameAI::FSM::FSM::HasTransition(const State* const fromState, const State* 
 	return HasTransition(fromState->GetName(), toState->GetName());
 }
 
-void GameAI::FSM::FSM::SwitchToState(State* newState)
+void GameAI::FSM::FSM::SwitchToState(State* newState, UBlackboardComponent* blackboard)
 {
-	pCurrentState->OnExit(newState);	//exit the current
-	newState->OnEnter(pCurrentState);	//enter the new
-	pCurrentState = newState;			//set the current to new
-	
+	if (pCurrentState != nullptr)
+		pCurrentState->OnExit(newState, blackboard); //exit the current
+	newState->OnEnter(pCurrentState, blackboard); //enter the new
+	pCurrentState = newState; //set the current to new
+
 	CurrentTransitions.clear();
 	if (CurrentTransitions.size() < Transitions.size())
 	{
 		CurrentTransitions.resize(Transitions.size());
 	}
-	
+
 	//copy transition that have the newstate as the fromState
 	auto transitionsView = Transitions | std::views::transform([](auto& transition) { return transition.get(); });
 	std::ranges::copy_if(transitionsView, std::back_inserter(CurrentTransitions)
-		, [&](const Transition* transition) { return transition->GetFromState()->GetName() == newState->GetName(); });
+	                     , [&](const Transition* transition)
+	                     {
+		                     return transition->GetFromState()->GetName() == newState->GetName();
+	                     });
 }

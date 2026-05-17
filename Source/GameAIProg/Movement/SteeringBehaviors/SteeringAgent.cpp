@@ -30,17 +30,13 @@ void ASteeringAgent::Tick(float DeltaTime)
 
 	if (SteeringBehavior)
 	{
+		if (this ==nullptr)
+		{
+			UE_LOG(LogTemp, Log, TEXT("Steering Agent: Steering Behavior is NULL"));
+			return;
+		}
+		
 		const SteeringOutput Output = SteeringBehavior->CalculateSteering(DeltaTime, *this);
-
-		/* 
-		 * Based on Reynolds Steering Behavior (https://www.red3d.com/cwr/steer/gdc99/), 
-		 * not used due to the non-use of the angularvelocity and the behavior of movementcomponent with missing variables like max_force
-		 */
-		//FVector2D DesiredVelocity = Output.LinearVelocity * GetMaxLinearSpeed();
-		//FVector2D Steering = DesiredVelocity - FVector2D{GetVelocity()};
-		//const float MaxAngle{GetMaxAngularSpeed()};
-		//const float RotationStrength = FMath::Clamp(Output.AngularVelocity, -MaxAngle, MaxAngle) * DeltaTime;
-		//AddMovementInput(FVector{Steering, 0.f}, RotationStrength);
 
 		AddMovementInput(FVector{Output.LinearVelocity, 0.f});
 

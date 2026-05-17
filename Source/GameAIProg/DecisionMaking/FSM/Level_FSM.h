@@ -3,7 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DecisionMaking/PatrolStates.h"
 #include "Shared/Level_Base.h"
+#include "Shared/Graph/GraphNodeFactory.h"
+#include "Shared/Graph/GraphRenderer.h"
 #include "Level_FSM.generated.h"
 
 UCLASS()
@@ -25,4 +28,11 @@ protected:
 private:
 	UPROPERTY()
 	ASteeringAgent* Agent{nullptr}; // ref
+	
+	void InitBlackboardData(UBlackboardComponent* blackboard);
+	void SetupFSMStates(UFSMComponent* fsm);
+	
+	GameAI::GraphRenderer GraphRenderer{nullptr};
+	GameAI::Graph Graph{false};
+	GameAI::GraphNodeFactory<GameAI::Node> NodeFactory{};
 };

@@ -27,6 +27,8 @@ class GAMEAIPROG_API UFSMComponent : public UBrainComponent
 public:
 	// Sets default values for this component's properties
 	UFSMComponent();
+	
+	void Initialize(UBlackboardComponent* blackboardComp, std::unique_ptr<GameAI::FSM::State>&& startState);
 
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
@@ -37,8 +39,11 @@ public:
 	
 	virtual bool IsRunning() const override; 
 	
-	void AddState(std::unique_ptr<GameAI::FSM::State>&& NewState);
+	GameAI::FSM::State* AddState(std::unique_ptr<GameAI::FSM::State>&& NewState);
 	void AddTransition(GameAI::FSM::State* From, GameAI::FSM::State* To, std::function<bool()> EvalFunc) const;
+	
+	GameAI::FSM::State* GetStartState() const;
+	UBlackboardComponent* GetBlackboard() const { return BlackboardComp; };
 		
 protected:
 	// Called when the game starts
@@ -46,5 +51,8 @@ protected:
 
 private:
 	std::unique_ptr<GameAI::FSM::FSM> FSMInstance;
+	GameAI::FSM::State* StartState;
 	bool bIsRunning{false};
+	
+	TObjectPtr<UBlackboardComponent> BlackboardComp;
 };

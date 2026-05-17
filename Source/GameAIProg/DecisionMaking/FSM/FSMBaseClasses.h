@@ -3,37 +3,23 @@
 #include <memory>
 #include <string>
 
+#include "AIController.h"
+
 namespace GameAI::FSM
 {
-	class State;
-	
-	class StateBuilder final
-	{
-	public:
-		
-		StateBuilder(const std::string& stateName);
-
-		StateBuilder& SetOnEnter(std::function<void(State* previousState)>&& func);
-		StateBuilder& SetOnExit(std::function<void(State* previousState)>&& func);
-		StateBuilder& SetUpdate(std::function<bool()>&& func);
-		
-		std::unique_ptr<State>&& GetState();
-		
-	private: 
-		std::unique_ptr<State> BuildingState;
-	};
-
-	class State final
+	class State
 	{
 	public:
 		State(const std::string& name);
+		
+		virtual ~State() = default;
 
 		const std::string& GetName() const;
-
-		std::function<void(State* previousState)> OnEnter{};
-		std::function<void()> Update{};
-		std::function<void(State* nextState)> OnExit{};
-
+		
+		virtual void OnEnter(State* previousState, UBlackboardComponent* pBlackboard) = 0;
+		virtual void Update(UBlackboardComponent* pBlackboard, float deltaTime) = 0;
+		virtual void OnExit(State* nextState, UBlackboardComponent* pBlackboard) = 0;
+		
 	private:
 		std::string Name;
 	};
@@ -58,12 +44,12 @@ namespace GameAI::FSM
 	class FSM
 	{
 	public:
-		FSM(std::unique_ptr<GameAI::FSM::State>&& startState);
+		FSM(std::unique_ptr<GameAI::FSM::State>&& startState, UBlackboardComponent* blackboard);
 
 		void AddState(std::unique_ptr<GameAI::FSM::State>&& newState);
 		void AddTransition(std::unique_ptr<Transition>&& transition);
 
-		void Update();
+		void Update(UBlackboardComponent* blackboard, float deltaTime);
 
 		bool HasState(const std::string& name) const;
 		bool HasState(const State* const state) const;
@@ -71,16 +57,12 @@ namespace GameAI::FSM
 		bool HasTransition(const State* const fromState, const State* const toState) const;
 		
 	private:
-		void SwitchToState(State* newState);
+		void SwitchToState(State* newState, UBlackboardComponent* blackboard);
 
-		std::vector<std::unique_ptr<State>> States;
-		std::vector<std::unique_ptr<Transition>> Transitions;
+		std::vector<std::unique_ptr<State>> States{};
+		std::vector<std::unique_ptr<Transition>> Transitions{};
 
-		State* pCurrentState;
-		std::vector<Transition*> CurrentTransitions;
-		
-		//agent specific, use parameters in functions
-		//aicontroller
-		//blackboard
+		State* pCurrentState{};
+		std::vector<Transition*> CurrentTransitions{};
 	};
 }
