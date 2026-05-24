@@ -27,9 +27,9 @@ namespace GameAI::FSM
 	class Transition final
 	{
 	public:
-		Transition(State* from, State* to, std::function<bool()>&& evalFunc);
+		Transition(State* from, State* to, std::function<bool(UBlackboardComponent*)>&& evalFunc);
 
-		bool Evaluate() const;
+		bool Evaluate(UBlackboardComponent* pBlackboard) const;
 
 		State* const GetToState() const;
 		State* const GetFromState() const;
@@ -38,7 +38,7 @@ namespace GameAI::FSM
 		State* pFromState;
 		State* pToState;
 
-		std::function<bool()> EvalFunc;
+		std::function<bool(UBlackboardComponent*)> EvalFunc;
 	};
 
 	class FSM
@@ -58,6 +58,7 @@ namespace GameAI::FSM
 		
 	private:
 		void SwitchToState(State* newState, UBlackboardComponent* blackboard);
+		void SetValidTransitions();
 
 		std::vector<std::unique_ptr<State>> States{};
 		std::vector<std::unique_ptr<Transition>> Transitions{};

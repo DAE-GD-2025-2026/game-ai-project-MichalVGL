@@ -40,7 +40,7 @@ public:
 	virtual bool IsRunning() const override; 
 	
 	GameAI::FSM::State* AddState(std::unique_ptr<GameAI::FSM::State>&& NewState);
-	void AddTransition(GameAI::FSM::State* From, GameAI::FSM::State* To, std::function<bool()> EvalFunc) const;
+	void AddTransition(GameAI::FSM::State* From, GameAI::FSM::State* To, std::function<bool(UBlackboardComponent*)> EvalFunc) const;
 	
 	GameAI::FSM::State* GetStartState() const;
 	UBlackboardComponent* GetBlackboard() const { return BlackboardComp; };

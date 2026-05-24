@@ -41,9 +41,8 @@ GameAI::FSM::State* UFSMComponent::AddState(std::unique_ptr<GameAI::FSM::State>&
 }
 
 void UFSMComponent::AddTransition(GameAI::FSM::State* From, GameAI::FSM::State* To,
-                                  std::function<bool()> EvalFunc) const
+                                  std::function<bool(UBlackboardComponent*)> EvalFunc) const
 {
-	// TODO
 	if (!FSMInstance->HasState(From)
 		|| !FSMInstance->HasState(To))
 	{
@@ -73,12 +72,17 @@ void UFSMComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	// TODO
 	
+	if (!bIsRunning)
+		return;
+	
 	FSMInstance->Update(BlackboardComp, DeltaTime);
 }
 
 void UFSMComponent::StartLogic()
 {
 	Super::StartLogic();
+	
+	bIsRunning = true;
 
 	// TODO
 }
@@ -86,6 +90,8 @@ void UFSMComponent::StartLogic()
 void UFSMComponent::StopLogic(const FString& Reason)
 {
 	// TODO
+	
+	bIsRunning = false;
 }
 
 bool UFSMComponent::IsRunning() const

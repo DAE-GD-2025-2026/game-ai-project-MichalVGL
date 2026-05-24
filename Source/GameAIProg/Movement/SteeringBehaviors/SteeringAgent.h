@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameAIProg/Shared/BaseAgent.h"
+#include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Steering/SteeringBehaviors.h"
 #include "SteeringAgent.generated.h"
 
@@ -53,6 +54,9 @@ public:
 	ASteeringAgent();
 
 protected:
+	
+	UPROPERTY()
+	UAIPerceptionStimuliSourceComponent* StimuliSource;
 
 	ISteeringBehavior* SteeringBehavior{nullptr}; // non-owning
 	

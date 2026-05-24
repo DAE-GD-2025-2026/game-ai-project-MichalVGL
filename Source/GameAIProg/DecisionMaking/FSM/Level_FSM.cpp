@@ -4,6 +4,7 @@
 #include "Level_FSM.h"
 
 #include "FSMComponent.h"
+#include "InteractiveToolManager.h"
 #include "BehaviorTree/Blackboard/BlackboardKeyType_Object.h"
 #include "DecisionMaking/GameAIController.h"
 #include "DecisionMaking/PatrolStates.h"
@@ -37,17 +38,24 @@ void ALevel_FSM::BeginPlay()
 	Graph.AddConnection(id2, id3);
 	Graph.AddConnection(id3, id0);
 
+	// Spawn AI Steering agent (custom steering behaviours) no longer used but still works for the setup (also has visuals)
 	Agent = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass,
-	                                               FVector{0, 0, 90}, FRotator::ZeroRotator);
+	                                               FVector{-size, -size, 90}, FRotator::ZeroRotator);
 	Agent->SetDebugRenderingEnabled(false);
-
-	//TODO
+	
 	AGameAIController* AIController = Cast<AGameAIController>(Agent->GetController());
 	if (!AIController)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Agent does not have a AGameAIController"));
 		return;
 	}
+	
+	// Spawn mouse controlled agent
+	MouseAgent = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass,
+												   FVector{0, 0, 90}, FRotator::ZeroRotator);
+	
+	MouseAgent->GetCharacterMovement()->MaxWalkSpeed = 700.f; //make it be able to outrun the patrolpawn
+	
 	
 	//init state machine and start state
 	AIController->InitFiniteStateMachine(std::make_unique<GameAI::FSM::PatrolState>()
@@ -74,6 +82,13 @@ void ALevel_FSM::BeginPlay()
 	AIController->RunFiniteStateMachine();
 }
 
+void ALevel_FSM::BindLevelInputActions()
+{
+	Super::BindLevelInputActions();
+	
+	PlayerEnhancedInputComponent->BindAction(SetTargetAction, ETriggerEvent::Started, this, &ALevel_FSM::OnClick);
+}
+
 void ALevel_FSM::InitBlackboardData(UBlackboardComponent* blackboard)
 {
 	if (blackboard == nullptr)
@@ -85,7 +100,6 @@ void ALevel_FSM::InitBlackboardData(UBlackboardComponent* blackboard)
 	
 	//set the agent itself
 	bb.SetActor(Agent);
-	bb.SetSelfSteeringAgent(Agent);
 	
 	//set the patrol path
 	UPatrolPathData* patrolPath = NewObject<UPatrolPathData>(this);
@@ -98,10 +112,14 @@ void ALevel_FSM::InitBlackboardData(UBlackboardComponent* blackboard)
 
 	bb.SetPatrolPath(patrolPath);
 	
-	//todo, set target,...
+	//set target
+	bb.SetTargetActor(MouseAgent);
 	
-	//todo, delete test code
-	PrintBlackBoardData(blackboard);
+	//set search time
+	bb.SetMaximumSearchTime(5.f);
+	
+	//test code
+	//PrintBlackBoardData(blackboard);
 }
 
 void ALevel_FSM::SetupFSMStates(UFSMComponent* fsm)
@@ -110,9 +128,18 @@ void ALevel_FSM::SetupFSMStates(UFSMComponent* fsm)
 	auto* chaseState = fsm->AddState(std::make_unique<GameAI::FSM::ChaseState>());
 	auto* searchState = fsm->AddState(std::make_unique<GameAI::FSM::SearchState>());
 	
-	//fsm->AddTransition();
-	//todo, add transitions
-	//fsm->AddTransition()
+	fsm->AddTransition(patrolState, chaseState, [](UBlackboardComponent* bb) { return GameAI::FSM::IsTargetVisible(bb); });
+	fsm->AddTransition(chaseState, searchState, [](UBlackboardComponent* bb) { return !GameAI::FSM::IsTargetVisible(bb); });
+	fsm->AddTransition(searchState, chaseState, [](UBlackboardComponent* bb) { return GameAI::FSM::IsTargetVisible(bb); });
+	fsm->AddTransition(searchState, patrolState, [](UBlackboardComponent* bb) { return GameAI::FSM::IsSearchingTooLong(bb); });
+}
+
+void ALevel_FSM::OnClick()
+{
+	AAIController* Con = Cast<AAIController>(MouseAgent->GetController());
+	if (!Con) return;
+
+	Con->MoveToLocation(LatestMouseWorldPos);
 }
 
 // Called every frame

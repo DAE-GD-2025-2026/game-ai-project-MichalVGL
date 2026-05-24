@@ -7,6 +7,7 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "FSM/FSMBaseClasses.h"
+#include "Perception/AISenseConfig_Sight.h"
 #include "GameAIController.generated.h"
 
 UCLASS()
@@ -28,8 +29,15 @@ public:
 	void RunFiniteStateMachine();
 
 protected:
+	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	
+	UFUNCTION()
+	void OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+	
+	UPROPERTY()
+	UAISenseConfig_Sight* SightConfig;
 	
 	bool FSMInitialized{false};
 };

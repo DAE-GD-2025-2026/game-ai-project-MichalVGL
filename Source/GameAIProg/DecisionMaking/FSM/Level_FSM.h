@@ -12,9 +12,13 @@
 UCLASS()
 class GAMEAIPROG_API ALevel_FSM : public ALevel_Base
 {
+private:
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FSMLevel|Input")
+	UInputAction* SetTargetAction{};
+	
 	// Sets default values for this actor's properties
 	ALevel_FSM();
 
@@ -25,12 +29,19 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void BindLevelInputActions() override;
+	
 private:
 	UPROPERTY()
 	ASteeringAgent* Agent{nullptr}; // ref
 	
+	UPROPERTY()
+	ASteeringAgent* MouseAgent{nullptr};
+	
 	void InitBlackboardData(UBlackboardComponent* blackboard);
 	void SetupFSMStates(UFSMComponent* fsm);
+	
+	void OnClick();
 	
 	GameAI::GraphRenderer GraphRenderer{nullptr};
 	GameAI::Graph Graph{false};

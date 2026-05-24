@@ -22,12 +22,12 @@ namespace GameAI::FSM
 		inline const FName TargetVisible{"TargetVisible"};
 		inline const FName LastKnownLocation{"LastKnownLocation"};
 		inline const FName LastPatrolPos{"LastPatrolPosition"};
+		inline const FName HasLastPatrolPos{"HasLastPatrolPosition"};
+		inline const FName IsReturningToPatrol{"IsReturningToPatrol"};
 		inline const FName CurrentPatrolNodeIndex{"CurrentPatrolNodeIndex"};
 		inline const FName PatrolPath{"PatrolPath"};
-		inline const FName NavGraph{"NavGraph"};
 		inline const FName SearchTime{"SearchTime"};
-		inline const FName SelfSteeringAgent{"SelfSteeringAgent"};
-		inline const FName CurrentSteeringBehavior{"CurrentSteeringBehavior"};
+		inline const FName MaximumSearchTime{"MaximumSearchTime"};
 	}
 
 	// =======================
@@ -95,6 +95,28 @@ namespace GameAI::FSM
 		{
 			Blackboard->SetValueAsVector(PatrolBBItems::LastPatrolPos, Location);
 		}
+		
+		// --- IsReturningToPatrol ---
+		bool GetIsReturningToPatrol() const
+		{
+			return Blackboard->GetValueAsBool(PatrolBBItems::IsReturningToPatrol);
+		}
+		
+		void SetIsReturningToPatrol(bool bIsReturning) const
+		{
+			Blackboard->SetValueAsBool(PatrolBBItems::IsReturningToPatrol, bIsReturning);
+		}
+		
+		// --- HasLastPatrolPos ---
+		bool GetHasLastPatrolPos() const
+		{
+			return Blackboard->GetValueAsBool(PatrolBBItems::HasLastPatrolPos);
+		}
+		
+		void SetHasLastPatrolPos(bool nHasPatrolPos) const
+		{
+			Blackboard->SetValueAsBool(PatrolBBItems::HasLastPatrolPos, nHasPatrolPos);
+		}
 
 		// --- CurrentPatrolNodeIndex ---
 		int32 GetCurrentPatrolNodeIndex() const
@@ -110,24 +132,15 @@ namespace GameAI::FSM
 		// --- PatrolPath ---
 		UPatrolPathData* GetPatrolPath() const
 		{
-			return Cast<UPatrolPathData>(Blackboard->GetValueAsObject(PatrolBBItems::PatrolPath));
+			return Cast<UPatrolPathData>(
+				Blackboard->GetValue<UBlackboardKeyType_TrackedObject>(PatrolBBItems::PatrolPath));
+			//return Cast<UPatrolPathData>(Blackboard->GetValueAsObject(PatrolBBItems::PatrolPath));
 		}
 
 		void SetPatrolPath(UPatrolPathData* Path) const
 		{
-			Blackboard->SetValueAsObject(PatrolBBItems::PatrolPath, Path);
-		}
-
-		// --- NavGraph ---
-		//todo, Replace UObject with your actual navgraph class
-		UObject* GetNavGraph() const
-		{
-			return Blackboard->GetValueAsObject(PatrolBBItems::NavGraph);
-		}
-
-		void SetNavGraph(UObject* Graph) const
-		{
-			Blackboard->SetValueAsObject(PatrolBBItems::NavGraph, Graph);
+			Blackboard->SetValue<UBlackboardKeyType_TrackedObject>(PatrolBBItems::PatrolPath, Path);
+			//Blackboard->SetValueAsObject(PatrolBBItems::PatrolPath, Path);
 		}
 
 		// --- SearchTime ---
@@ -139,6 +152,17 @@ namespace GameAI::FSM
 		void SetSearchTime(float Time) const
 		{
 			Blackboard->SetValueAsFloat(PatrolBBItems::SearchTime, Time);
+		}
+		
+		// --- MaximumSearchTime ---
+		float GetMaximumSearchTime() const
+		{
+			return Blackboard->GetValueAsFloat(PatrolBBItems::MaximumSearchTime);
+		}
+		
+		void SetMaximumSearchTime(float Time) const
+		{
+			Blackboard->SetValueAsFloat(PatrolBBItems::MaximumSearchTime, Time);
 		}
 
 		// --- LootLocation ---
@@ -152,49 +176,6 @@ namespace GameAI::FSM
 			Blackboard->SetValueAsVector(PatrolBBItems::LootLocation, Location);
 		}
 
-		// --- SelfSteeringAgent ---
-		ASteeringAgent* GetSteeringAgent() const
-		{
-			return Cast<ASteeringAgent>(Blackboard->GetValueAsObject(PatrolBBItems::SelfSteeringAgent));
-		}
-
-		void SetSelfSteeringAgent(ASteeringAgent* Agent) const
-		{
-			//Blackboard->SetValue<UBlackboardKeyType_TrackedObject>(PatrolBBItems::SelfSteeringAgent, Agent);
-			Blackboard->SetValueAsObject(PatrolBBItems::SelfSteeringAgent, Agent);
-		}
-
-		// --- CurrentSteeringBehavior ---
-		ISteeringBehavior* GetCurrentSteeringBehavior() const
-		{
-			return Cast<UAgentSteeringBehavior>(Blackboard->GetValue<UBlackboardKeyType_TrackedObject>(PatrolBBItems::CurrentSteeringBehavior))->
-			       SteeringBehavior.get();
-		}
-
-		void SetCurrentSteeringBehavior(std::unique_ptr<ISteeringBehavior>&& behavior) const
-		{
-			UAgentSteeringBehavior* wrapper = Cast<UAgentSteeringBehavior>(
-				Blackboard->GetValue<UBlackboardKeyType_TrackedObject>(PatrolBBItems::CurrentSteeringBehavior));
-			if (!wrapper) //initialize the first time the steeringbehaviour is set
-			{
-				if (auto* actor = GetActor(); actor != nullptr)
-				{
-					wrapper = NewObject<UAgentSteeringBehavior>(actor);
-				}
-				else
-				{
-					UE_LOG(LogTemp, Warning,
-					       TEXT(
-						       "Tried to assign a steeringbehavior while the actor isn't set on the blackboard, make sure to call SetActor before!!"
-					       ));
-					return;
-				}
-			}
-
-			wrapper->SteeringBehavior = std::move(behavior);
-			Blackboard->SetValue<UBlackboardKeyType_TrackedObject>(PatrolBBItems::CurrentSteeringBehavior, wrapper);
-		}
-
 		UBlackboardComponent* Blackboard;
 	};
 
@@ -202,21 +183,19 @@ namespace GameAI::FSM
 	// Evaluation Functions
 	// =======================
 
-	class IsTargetVisible final //todo, delete and use polymorphism
+	static bool IsTargetVisible(UBlackboardComponent* pBlackboard)
 	{
-	public:
-		bool operator()()
-		{
-			//logic of visibility using te mem variables
+		PatrolBlackboard bb{pBlackboard};
 
-
-			return true;
-		}
-
-	private:
-		//target
-		//currentpos
-	};
+		return bb.IsTargetVisible();
+	}
+	
+	static bool IsSearchingTooLong(UBlackboardComponent* pBlackboard)
+	{
+		PatrolBlackboard bb{pBlackboard};
+		
+		return bb.GetSearchTime() >= bb.GetMaximumSearchTime(); 
+	}
 
 	// =======================
 	// Patrol State

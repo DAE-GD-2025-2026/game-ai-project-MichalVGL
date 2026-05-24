@@ -26,16 +26,16 @@ const std::string& GameAI::FSM::State::GetName() const
 // TRANSITION
 // ==========================================================
 
-GameAI::FSM::Transition::Transition(State* from, State* to, std::function<bool()>&& evalFunc)
+GameAI::FSM::Transition::Transition(State* from, State* to, std::function<bool(UBlackboardComponent*)>&& evalFunc)
 	: pFromState(from),
 	  pToState(to),
 	  EvalFunc(std::move(evalFunc))
 {
 }
 
-bool GameAI::FSM::Transition::Evaluate() const
+bool GameAI::FSM::Transition::Evaluate(UBlackboardComponent* pBlackboard) const
 {
-	return EvalFunc();
+	return EvalFunc(pBlackboard);
 }
 
 GameAI::FSM::State* const GameAI::FSM::Transition::GetToState() const
@@ -100,6 +100,8 @@ void GameAI::FSM::FSM::AddTransition(std::unique_ptr<Transition>&& transition)
 	}
 
 	Transitions.emplace_back(std::move(transition));
+	
+	SetValidTransitions();
 }
 
 void GameAI::FSM::FSM::Update(UBlackboardComponent* blackboard, float deltaTime)
@@ -115,9 +117,9 @@ void GameAI::FSM::FSM::Update(UBlackboardComponent* blackboard, float deltaTime)
 	pCurrentState->Update(blackboard, deltaTime);
 
 	//check transitions
-	auto validTransition = std::ranges::find_if(CurrentTransitions, [this](auto& transition)
+	auto validTransition = std::ranges::find_if(CurrentTransitions, [&](auto& transition)
 	{
-		return transition->Evaluate() == true;
+		return transition->Evaluate(blackboard) == true;
 	});
 
 	if (validTransition != CurrentTransitions.end())
@@ -160,17 +162,18 @@ void GameAI::FSM::FSM::SwitchToState(State* newState, UBlackboardComponent* blac
 	newState->OnEnter(pCurrentState, blackboard); //enter the new
 	pCurrentState = newState; //set the current to new
 
+	SetValidTransitions();
+}
+
+void GameAI::FSM::FSM::SetValidTransitions()
+{
 	CurrentTransitions.clear();
-	if (CurrentTransitions.size() < Transitions.size())
-	{
-		CurrentTransitions.resize(Transitions.size());
-	}
 
 	//copy transition that have the newstate as the fromState
 	auto transitionsView = Transitions | std::views::transform([](auto& transition) { return transition.get(); });
 	std::ranges::copy_if(transitionsView, std::back_inserter(CurrentTransitions)
-	                     , [&](const Transition* transition)
-	                     {
-		                     return transition->GetFromState()->GetName() == newState->GetName();
-	                     });
+						 , [&](const Transition* transition)
+						 {
+							 return transition->GetFromState()->GetName() == pCurrentState->GetName();
+						 });
 }
