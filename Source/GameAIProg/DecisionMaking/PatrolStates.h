@@ -23,6 +23,7 @@ namespace GameAI::FSM
 		inline const FName LastKnownLocation{"LastKnownLocation"};
 		inline const FName LastPatrolPos{"LastPatrolPosition"};
 		inline const FName HasLastPatrolPos{"HasLastPatrolPosition"};
+		inline const FName HasLastKnownLocation{"HasLastKnownLocation"};
 		inline const FName IsReturningToPatrol{"IsReturningToPatrol"};
 		inline const FName CurrentPatrolNodeIndex{"CurrentPatrolNodeIndex"};
 		inline const FName PatrolPath{"PatrolPath"};
@@ -116,6 +117,17 @@ namespace GameAI::FSM
 		void SetHasLastPatrolPos(bool nHasPatrolPos) const
 		{
 			Blackboard->SetValueAsBool(PatrolBBItems::HasLastPatrolPos, nHasPatrolPos);
+		}
+		
+		// --- HasLastPatrolPos ---
+		bool GetHasLastKnownLocation() const
+		{
+			return Blackboard->GetValueAsBool(PatrolBBItems::HasLastKnownLocation);
+		}
+		
+		void SetHasLastKnownLocation(bool nHasLastKnownLoc) const
+		{
+			Blackboard->SetValueAsBool(PatrolBBItems::HasLastKnownLocation, nHasLastKnownLoc);
 		}
 
 		// --- CurrentPatrolNodeIndex ---

@@ -15,7 +15,6 @@ AGameAIController::AGameAIController()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	BrainComponent = CreateDefaultSubobject<UFSMComponent>(TEXT("FSMComponent"));
 
 	PerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception"));
 
@@ -35,9 +34,6 @@ AGameAIController::AGameAIController()
 void AGameAIController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// Create Blackboard if need be
-	//InitFiniteStateMachine();
 }
 
 void AGameAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
@@ -49,10 +45,25 @@ void AGameAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 	}
 
 	GameAI::FSM::PatrolBlackboard bb{blackBoard};
-	
+
 	if (Actor == bb.GetTargetActor())
 	{
 		bb.SetTargetVisible(Stimulus.WasSuccessfullySensed());
+	}
+}
+
+void AGameAIController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	
+	if (UseBehaviourTree && BehaviorTree)
+	{
+		RunBehaviorTree(BehaviorTree);
+	}
+	else
+	{
+		BrainComponent = NewObject<UFSMComponent>(this, TEXT("FSMComponent"));
+		BrainComponent->RegisterComponent();
 	}
 }
 

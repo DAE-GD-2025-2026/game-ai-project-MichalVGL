@@ -1,9 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Level_FSM.h"
+#include "Level_BT.h"
 
-#include "FSMComponent.h"
 #include "InteractiveToolManager.h"
 #include "BehaviorTree/Blackboard/BlackboardKeyType_Object.h"
 #include "DecisionMaking/GameAIController.h"
@@ -12,14 +11,14 @@
 
 
 // Sets default values
-ALevel_FSM::ALevel_FSM()
+ALevel_BT::ALevel_BT()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 }
 
 // Called when the game starts or when spawned
-void ALevel_FSM::BeginPlay()
+void ALevel_BT::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -56,39 +55,43 @@ void ALevel_FSM::BeginPlay()
 	
 	MouseAgent->GetCharacterMovement()->MaxWalkSpeed = 700.f; //make it be able to outrun the patrolpawn
 	
-	//init state machine and start state
-	AIController->InitFiniteStateMachine(std::make_unique<GameAI::FSM::PatrolState>()
-		,  std::function<void(UBlackboardComponent*)>(std::bind(&ALevel_FSM::InitBlackboardData, this, std::placeholders::_1)));
-	
-	UFSMComponent* FSM = Cast<UFSMComponent>(AIController->GetBrainComponent());
-	if (!FSM)
+	//disable behaviour tree of the mouseagent
+	if (AController* MouseController = MouseAgent->GetController())
 	{
-		UE_LOG(LogTemp, Error, TEXT("AIController does not have a UFSMComponent"));
-		return;
+		MouseController->UnPossess();
 	}
 	
+	AAIController* SimpleController = GetWorld()->SpawnActor<AAIController>();
+	SimpleController->Possess(MouseAgent);
+	
+	//init state machine and start state
+	//AIController->InitFiniteStateMachine(std::make_unique<GameAI::FSM::PatrolState>()
+	//	,  std::function<void(UBlackboardComponent*)>(std::bind(&ALevel_BT::InitBlackboardData, this, std::placeholders::_1)));
+	
 	//set the blackboard init data
-	GameAI::FSM::PatrolBlackboard blackBoard{FSM->GetBlackboard()};
+	GameAI::FSM::PatrolBlackboard blackBoard{AIController->GetBlackboardComponent()};
 	if (blackBoard.Blackboard == nullptr)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Blackboard does not exist"));
 		return;
 	}
 	
-	SetupFSMStates(FSM);
+	InitBlackboardData(blackBoard.Blackboard);
+	
+	//SetupFSMStates(FSM);
 	
 	//FSM->AddState(std::make_unique<GameAI::FSM::TestState>());
-	AIController->RunFiniteStateMachine();
+	//AIController->RunFiniteStateMachine();
 }
 
-void ALevel_FSM::BindLevelInputActions()
+void ALevel_BT::BindLevelInputActions()
 {
 	Super::BindLevelInputActions();
 	
-	PlayerEnhancedInputComponent->BindAction(SetTargetAction, ETriggerEvent::Started, this, &ALevel_FSM::OnClick);
+	PlayerEnhancedInputComponent->BindAction(SetTargetAction, ETriggerEvent::Started, this, &ALevel_BT::OnClick);
 }
 
-void ALevel_FSM::InitBlackboardData(UBlackboardComponent* blackboard)
+void ALevel_BT::InitBlackboardData(UBlackboardComponent* blackboard)
 {
 	if (blackboard == nullptr)
 	{
@@ -121,19 +124,7 @@ void ALevel_FSM::InitBlackboardData(UBlackboardComponent* blackboard)
 	//PrintBlackBoardData(blackboard);
 }
 
-void ALevel_FSM::SetupFSMStates(UFSMComponent* fsm)
-{
-	auto* patrolState = fsm->GetStartState();
-	auto* chaseState = fsm->AddState(std::make_unique<GameAI::FSM::ChaseState>());
-	auto* searchState = fsm->AddState(std::make_unique<GameAI::FSM::SearchState>());
-	
-	fsm->AddTransition(patrolState, chaseState, [](UBlackboardComponent* bb) { return GameAI::FSM::IsTargetVisible(bb); });
-	fsm->AddTransition(chaseState, searchState, [](UBlackboardComponent* bb) { return !GameAI::FSM::IsTargetVisible(bb); });
-	fsm->AddTransition(searchState, chaseState, [](UBlackboardComponent* bb) { return GameAI::FSM::IsTargetVisible(bb); });
-	fsm->AddTransition(searchState, patrolState, [](UBlackboardComponent* bb) { return GameAI::FSM::IsSearchingTooLong(bb); });
-}
-
-void ALevel_FSM::OnClick()
+void ALevel_BT::OnClick()
 {
 	AAIController* Con = Cast<AAIController>(MouseAgent->GetController());
 	if (!Con) return;
@@ -142,7 +133,7 @@ void ALevel_FSM::OnClick()
 }
 
 // Called every frame
-void ALevel_FSM::Tick(float DeltaTime)
+void ALevel_BT::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
