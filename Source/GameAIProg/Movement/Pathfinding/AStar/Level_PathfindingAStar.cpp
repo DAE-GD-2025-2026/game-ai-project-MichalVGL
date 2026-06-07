@@ -173,14 +173,22 @@ void ALevel_PathfindingAStar::CalculatePath()
 		&& PathStartNodeId != PathEndNodeId)
 	{
 		//Select (uncomment) BFS Pathfinding or A* Pathfinding
-		//BFS pathfinder = BFS(TerrainGraph);
-		AStar pathfinder = AStar(TerrainGraph, HeuristicFunction);
+		BFS pathfinderBFS = BFS(TerrainGraph);
+		AStar pathfinderA = AStar(TerrainGraph, HeuristicFunction);
 		TerrainNode* const startNode = TerrainGraph->GetNodeAs<TerrainNode>(PathStartNodeId);
 		TerrainNode* const endNode = TerrainGraph->GetNodeAs<TerrainNode>(PathEndNodeId);
 
-		FoundPath = pathfinder.FindPath(startNode, endNode, true);
-		// std::cout << "New path calculated using " << typeid(pathfinder).name() << std::endl;
-		UE_LOG(LogTemp, Log, TEXT("New path calculated using %hs"), typeid(pathfinder).name());
+		if (UseBFS)
+		{
+			FoundPath = pathfinderBFS.FindPath(startNode, endNode, true);
+			UE_LOG(LogTemp, Log, TEXT("New path calculated using %hs"), typeid(pathfinderBFS).name());
+		}
+		else
+		{
+			FoundPath = pathfinderA.FindPath(startNode, endNode, true);
+			UE_LOG(LogTemp, Log, TEXT("New path calculated using %hs"), typeid(pathfinderA).name());
+		}
+
 		UpdateAgentPath(FoundPath);
 	}
 	else
@@ -258,37 +266,49 @@ void ALevel_PathfindingAStar::UpdateImGui()
 		ImGui::Separator();
 		ImGui::Spacing();
 		ImGui::Spacing();
-
-		ImGui::Text("A* Pathfinding");
+		
+		ImGui::Checkbox("Use BFS", &UseBFS);
 		ImGui::Spacing();
-
 		ImGui::Checkbox("Grid", &bDrawGrid);
 		ImGui::Checkbox("NodeNumbers", &bDrawNodeNumbers);
 		ImGui::Checkbox("Connections", &bDrawConnections);
 		ImGui::Checkbox("Connections Costs", &bDrawConnectionsCosts);
-		if (ImGui::Combo("", &SelectedHeuristic, "Manhattan\0Euclidean\0SqEuclidean\0Octile\0Chebyshev", 4))
-		{
-			switch (SelectedHeuristic)
-			{
-			case 0:
-				HeuristicFunction = HeuristicFunctions::Manhattan;
-				break;
-			case 1:
-				HeuristicFunction = HeuristicFunctions::Euclidean;
-				break;
-			case 2:
-				HeuristicFunction = HeuristicFunctions::SqEuclidean;
-				break;
-			case 3:
-				HeuristicFunction = HeuristicFunctions::Octile;
-				break;
-			default:
-			case 4:
-				HeuristicFunction = HeuristicFunctions::Chebyshev;
-				break;
-			}
-		}
 		ImGui::Spacing();
+		
+		if (!UseBFS)
+		{
+			ImGui::Text("A* Pathfinding");
+			ImGui::Spacing();
+			
+			if (ImGui::Combo("", &SelectedHeuristic, "Manhattan\0Euclidean\0SqEuclidean\0Octile\0Chebyshev", 4))
+			{
+				switch (SelectedHeuristic)
+				{
+				case 0:
+					HeuristicFunction = HeuristicFunctions::Manhattan;
+					break;
+				case 1:
+					HeuristicFunction = HeuristicFunctions::Euclidean;
+					break;
+				case 2:
+					HeuristicFunction = HeuristicFunctions::SqEuclidean;
+					break;
+				case 3:
+					HeuristicFunction = HeuristicFunctions::Octile;
+					break;
+				default:
+				case 4:
+					HeuristicFunction = HeuristicFunctions::Chebyshev;
+					break;
+				}
+			}
+			ImGui::Spacing();
+		}
+		else
+		{
+			ImGui::Text("BFS Pathfinding");
+			ImGui::Spacing();
+		}
 
 		//End
 		ImGui::End();

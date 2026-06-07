@@ -30,6 +30,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PathfindingLevel|Input")
 	UInputAction* SetNodeTerrainWaterAction{};
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PathfindingLevel|Input")
+	bool UseBFS;
 
 	// Sets default values for this actor's properties
 	ALevel_PathfindingAStar();

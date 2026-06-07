@@ -2,16 +2,12 @@
 
 A project made following the course Game AI Programming (Algorithms 2).
 
-## Current implementation
+## Extra Assignment | Fallback Path
 
-- Base steeringbehaviours
-- Combined steeringbehaviours
-- Flock
-- Flock Partitioning
-- Graph theory
-- BFS pathfinding
-- A* pathfinding
-- Navigation graph from navmesh
-- SSFA path smoothing
+ Assignment from Week05-Pathfinding.
 
-## To be implemented
+ Both Astar and BFS accept a boolean allowing them to return a path that does not reach the target node.
+ They will instead return a path to a node closest to the original target that is reachable.
+ It does this by finding the closest node in its records after the algorithm and reconstructing the path from that node instead.
+
+ The ImGui can switch between both of these algorithms and you can see the results by surrounding the target tile with blockers ('3' on keyboard).
